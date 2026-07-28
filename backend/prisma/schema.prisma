@@ -13,10 +13,41 @@ enum Role {
   ADMIN
 }
 model User {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   name      String
-  email     String   @unique
+  email     String    @unique
   password  String
-  role      Role     @default(CUSTOMER)
-  createdAt DateTime @default(now())
+  role      Role      @default(CUSTOMER)
+  createdAt DateTime  @default(now())
+  vendorRequest   Boolean  @default(false)
+  
+  products  Product[]
 }
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+
+  products  Product[]
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String
+  price       Decimal   @db.Decimal(10, 2)
+  stock       Int
+  imageUrl    String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  vendorId    Int
+  categoryId  Int
+
+  vendor       User      @relation(fields: [vendorId], references: [id])
+  category     Category  @relation(fields: [categoryId], references: [id])
+}
+
