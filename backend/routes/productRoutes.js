@@ -4,6 +4,7 @@ const router = express.Router();
 const {
     createProduct,
     getProducts,
+    getMyProducts,
     getProduct,
     updateProduct,
     deleteProduct,
@@ -14,6 +15,12 @@ const authorize = require("../middleware/authorize");
 
 // Public Routes
 router.get("/", getProducts);
+router.get(
+    "/my-products",
+    protect,
+    authorize("VENDOR", "ADMIN"),
+    getMyProducts
+);
 router.get("/:id", getProduct);
 
 // Vendor & Admin Routes
@@ -31,7 +38,6 @@ router.put(
      authorize("ADMIN", "VENDOR"),
     updateProduct
 );
-
 router.delete(
     "/:id",
     protect,

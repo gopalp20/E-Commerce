@@ -1,5 +1,10 @@
 const prisma = require("../config/prisma");
 
+const publicVendorSelect = {
+    id: true,
+    name: true,
+};
+
 const createProduct = async (req, res) => {
     try {
 
@@ -58,7 +63,34 @@ const createProduct = async (req, res) => {
         });
     }
 };
+const getMyProducts = async (req, res) => {
+    try {
+        const products = await prisma.product.findMany({
+            where: {
+                vendorId: req.user.id,
+            },
+            include: {
+                category: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
 
+        res.status(200).json({
+            success: true,
+            count: products.length,
+            products,
+        });
+    } catch (error) {
+        console.log(error);
+
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+        });
+    }
+};
 const getProducts = async (req, res) => {
     try {
         const { categoryId } = req.query;
@@ -68,7 +100,9 @@ const getProducts = async (req, res) => {
                 ? { categoryId: Number(categoryId) }
                 : {},
             include: {
-                vendor: true,
+                vendor: {
+                    select: publicVendorSelect,
+                },
                 category: true,
             },
         });
@@ -94,7 +128,9 @@ const getProduct = async (req, res) => {
                 id:Number(req.params.id)
             },
             include:{
-                vendor:true,
+                vendor: {
+                    select: publicVendorSelect,
+                },
                 category:true
             }
         });
@@ -245,6 +281,13 @@ const deleteProduct = async (req,res)=>{
 
     }catch(error){
 
+        if (error.code === "P2003") {
+            return res.status(409).json({
+                success: false,
+                message: "This product cannot be deleted because it is referenced by a cart or order",
+            });
+        }
+
         res.status(500).json({
             success:false,
             message:"Internal Server Error"
@@ -257,6 +300,7 @@ const deleteProduct = async (req,res)=>{
 module.exports = {
     createProduct,
     getProducts,
+    getMyProducts,
     getProduct,
     updateProduct,
     deleteProduct
