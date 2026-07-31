@@ -12,9 +12,11 @@ const {
 
 const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
+const validate = require("../middleware/validate");
+const { createProductSchema, updateProductSchema, productQuerySchema } = require("../validations/schemas");
 
 // Public Routes
-router.get("/", getProducts);
+router.get("/", validate(productQuerySchema, "query"), getProducts);
 router.get(
     "/my-products",
     protect,
@@ -28,7 +30,7 @@ router.post(
     "/",
     protect,
     authorize("ADMIN", "VENDOR"),
-    createProduct
+    validate(createProductSchema), createProduct
 );
 
 // Owner or Admin Routes
@@ -36,7 +38,7 @@ router.put(
     "/:id",
     protect,
      authorize("ADMIN", "VENDOR"),
-    updateProduct
+    validate(updateProductSchema), updateProduct
 );
 router.delete(
     "/:id",

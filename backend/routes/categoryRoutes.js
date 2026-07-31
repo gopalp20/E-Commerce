@@ -3,6 +3,8 @@ const express = require("express");
 const router = express.Router();
 const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
+const validate = require("../middleware/validate");
+const { categorySchema } = require("../validations/schemas");
 const {
   createCategory,
   getCategories,
@@ -11,9 +13,9 @@ const {
   deleteCategory,
 } = require("../controllers/categoryController");
 
-router.post("/", protect, authorize("ADMIN"), createCategory);
+router.post("/", protect, authorize("ADMIN"), validate(categorySchema), createCategory);
 
-router.put("/:id", protect, authorize("ADMIN"), updateCategory);
+router.put("/:id", protect, authorize("ADMIN"), validate(categorySchema), updateCategory);
 
 router.delete("/:id", protect, authorize("ADMIN"), deleteCategory);
 

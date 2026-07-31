@@ -10,6 +10,7 @@ const productRoutes = require("./routes/productRoutes");
 const vendorRoutes = require("./routes/vendorRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const { notFound, globalErrorHandler } = require("./middleware/errorMiddleware");
 const app = express();
 app.use(express.json());
 
@@ -27,6 +28,9 @@ app.get("/", (req, res) => {
     message: "Server is running successfully!",
   });
 });
+
+app.use(notFound);
+app.use(globalErrorHandler);
 
 
 async function start() {

@@ -21,6 +21,13 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum ProductStatus {
+  ACTIVE
+  OUT_OF_STOCK
+  DRAFT
+  ARCHIVED
+}
+
 model User {
   id            Int       @id @default(autoincrement())
   name          String
@@ -51,6 +58,9 @@ model Product {
   price       Decimal   @db.Decimal(10, 2)
   stock       Int
   imageUrl    String?
+  status      ProductStatus @default(DRAFT)
+  deleted     Boolean       @default(false)
+  deletedAt   DateTime?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -63,6 +73,22 @@ model Product {
 
   cartItems   CartItem[]
   orderItems  OrderItem[]
+  images      ProductImage[]
+
+  @@index([categoryId, status, deleted])
+  @@index([price])
+  @@index([vendorId, deleted])
+}
+
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  productId Int
+  createdAt DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model Cart {
