@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-Vendor E-Commerce Platform - Visual ERD & Data Flow</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    .mermaid svg { max-width: 100% !important; height: auto !important; margin: 0 auto; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-20">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-lg">
+          M
+        </div>
+        <div>
+          <h1 class="text-base font-extrabold text-white tracking-tight leading-none">
+            MarketPulse • Multi-Vendor Architecture
+          </h1>
+          <p class="text-xs text-slate-400 mt-1">Interactive Entity Relationship (ERD) & Data Flow Visualizer</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="#erd" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+          ER Diagram
+        </a>
+        <a href="#dfd" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
+          Data Flow
+        </a>
+        <a href="#state" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
+          State Machines
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+
+    <!-- Section 1: Entity Relationship Diagram (ERD) -->
+    <section id="erd" class="bg-slate-950 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-800 gap-2">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Database Schema Blueprint</span>
+          <h2 class="text-2xl font-black text-white tracking-tight mt-0.5">Entity-Relationship Diagram (ERD)</h2>
+          <p class="text-xs text-slate-400 mt-1">Full database schema covering PostgreSQL / Prisma tables and foreign key cardinalities</p>
+        </div>
+        <span class="text-xs font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full w-max">
+          Prisma ORM Compliant
+        </span>
+      </div>
+
+      <!-- Mermaid ERD Diagram Container -->
+      <div class="bg-slate-900 rounded-2xl border border-slate-800/80 p-6 overflow-x-auto">
+        <div class="mermaid">
+erDiagram
+    USER ||--o{ PRODUCT : "sells as Vendor"
+    USER ||--o| CART : "owns as Customer"
+    USER ||--o{ ORDER : "places as Customer"
+    USER ||--o{ REVIEW : "writes"
+
+    CATEGORY ||--o{ PRODUCT : "categorizes"
+    PRODUCT ||--o{ PRODUCT_IMAGE : "displays"
+    PRODUCT ||--o{ CART_ITEM : "added into"
+    PRODUCT ||--o{ ORDER_ITEM : "ordered into"
+    PRODUCT ||--o{ REVIEW : "receives"
+
+    CART ||--o{ CART_ITEM : "contains"
+    ORDER ||--o{ ORDER_ITEM : "contains"
+
+    USER {
+        int id PK
+        string name
+        string email UK
+        string password
+        enum role "CUSTOMER | VENDOR | ADMIN"
+        boolean vendorRequest
+        datetime createdAt
+    }
+
+    CATEGORY {
+        int id PK
+        string name
+        string slug UK
+        datetime createdAt
+    }
+
+    PRODUCT {
+        int id PK
+        string name
+        string description
+        decimal price
+        int stock
+        string imageUrl
+        enum status "ACTIVE | OUT_OF_STOCK | DRAFT | ARCHIVED"
+        boolean deleted
+        int vendorId FK
+        int categoryId FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    PRODUCT_IMAGE {
+        int id PK
+        string url
+        int productId FK
+        datetime createdAt
+    }
+
+    CART {
+        int id PK
+        int userId FK_UK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    CART_ITEM {
+        int id PK
+        int cartId FK
+        int productId FK
+        int quantity
+    }
+
+    ORDER {
+        int id PK
+        int userId FK
+        decimal totalAmount
+        enum status "PENDING | CONFIRMED | SHIPPED | DELIVERED | CANCELLED"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    ORDER_ITEM {
+        int id PK
+        int orderId FK
+        int productId FK
+        int quantity
+        decimal price
+    }
+
+    REVIEW {
+        int id PK
+        int productId FK
+        int userId FK
+        int rating
+        string title
+        string comment
+        datetime createdAt
+    }
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Complete System Architecture -->
+    <section class="bg-slate-950 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6">
+      <div class="pb-6 border-b border-slate-800">
+        <span class="text-xs font-bold uppercase tracking-wider text-purple-400">System Flow</span>
+        <h2 class="text-2xl font-black text-white tracking-tight mt-0.5">End-to-End Platform Architecture</h2>
+        <p class="text-xs text-slate-400 mt-1">Multi-role clients connecting through Axios to Express and PostgreSQL</p>
+      </div>
+
+      <div class="bg-slate-900 rounded-2xl border border-slate-800/80 p-6 overflow-x-auto">
+        <div class="mermaid">
+graph LR
+    subgraph Users["Platform Stakeholders"]
+        C[Customer Storefront]
+        V[Vendor Merchant Hub]
+        A[Platform Administrator]
+    end
+
+    subgraph Frontend["React 19 + Tailwind UI Layer"]
+        Router[React Router v6]
+        AuthCtx[AuthContext & RBAC]
+        CartCtx[CartContext Engine]
+        Axios[Axios API Client]
+    end
+
+    subgraph Backend["Node.js + Express REST API"]
+        Gateway[API Gateway Routes]
+        Protect[JWT Auth Middleware]
+        Ctrl[Domain Controllers]
+        Services[Stock Reservation Service]
+    end
+
+    subgraph Storage["Database Layer"]
+        Prisma[Prisma ORM]
+        Postgres[(PostgreSQL Database)]
+    end
+
+    C --> Router
+    V --> Router
+    A --> Router
+
+    Router --> AuthCtx
+    Router --> CartCtx
+    AuthCtx & CartCtx --> Axios
+
+    Axios -->|"Bearer Token"| Gateway
+    Gateway --> Protect --> Ctrl --> Services --> Prisma --> Postgres
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Data Flow Diagrams (DFD) -->
+    <section id="dfd" class="bg-slate-950 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6">
+      <div class="pb-6 border-b border-slate-800">
+        <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Transactional Execution</span>
+        <h2 class="text-2xl font-black text-white tracking-tight mt-0.5">Order Placement & Inventory Reservation Sequence</h2>
+        <p class="text-xs text-slate-400 mt-1">Demonstrates how the cart, stock reservation, and atomic transaction execute</p>
+      </div>
+
+      <div class="bg-slate-900 rounded-2xl border border-slate-800/80 p-6 overflow-x-auto">
+        <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Customer as Customer
+    participant UI as Checkout Page (/checkout)
+    participant CartAPI as Cart Service (/api/cart)
+    participant OrderAPI as Order Service (/api/orders)
+    participant Inventory as Stock Reservation Engine
+    participant DB as PostgreSQL (Prisma)
+
+    Customer->>UI: Clicks "Place Order"
+    UI->>OrderAPI: POST /api/orders { shippingAddress, paymentMethod }
+    OrderAPI->>DB: Begin Prisma Atomic Transaction $transaction
+    OrderAPI->>Inventory: Validate & Reserve Stock for each CartItem
+
+    alt Stock Available
+        Inventory->>DB: Deduct stock from Product Table
+        OrderAPI->>DB: Insert Order (Status: PENDING)
+        OrderAPI->>DB: Insert OrderItems (Snapshot price at purchase)
+        OrderAPI->>DB: Clear CartItems for User
+        OrderAPI-->>UI: 201 Created { success: true, orderId: 1005 }
+        UI-->>Customer: Display Order Details & Milestone Timeline
+    else Stock Insufficient
+        Inventory-->>OrderAPI: Throw AppError("Item out of stock")
+        OrderAPI->>DB: Rollback Entire Transaction
+        OrderAPI-->>UI: 400 Bad Request ("Insufficient stock available")
+        UI-->>Customer: Show Toast Alert ("Please reduce item quantity")
+    end
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: State Machines -->
+    <section id="state" class="bg-slate-950 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6">
+      <div class="pb-6 border-b border-slate-800">
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Status Transitions</span>
+        <h2 class="text-2xl font-black text-white tracking-tight mt-0.5">Fulfillment & Inventory State Machines</h2>
+        <p class="text-xs text-slate-400 mt-1">Defines permitted status progressions for Orders and Products</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Order State Machine -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-3">
+          <h3 class="text-sm font-bold text-white">Order Fulfillment Milestones</h3>
+          <div class="mermaid">
+stateDiagram-v2
+    [*] --> PENDING : Customer Checks Out
+    PENDING --> CONFIRMED : Merchant Verifies & Packs
+    PENDING --> CANCELLED : Customer Cancels Order
+    CONFIRMED --> SHIPPED : Carrier Scans Package
+    CONFIRMED --> CANCELLED : Merchant Out of Stock
+    SHIPPED --> DELIVERED : Customer Signs Delivery
+    DELIVERED --> [*]
+    CANCELLED --> [*]
+          </div>
+        </div>
+
+        <!-- Product State Machine -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-3">
+          <h3 class="text-sm font-bold text-white">Product Inventory Statuses</h3>
+          <div class="mermaid">
+stateDiagram-v2
+    [*] --> DRAFT : Merchant Creates Product
+    DRAFT --> ACTIVE : Merchant Publishes Listing
+    ACTIVE --> OUT_OF_STOCK : Stock Decrements to 0
+    OUT_OF_STOCK --> ACTIVE : Merchant Restocks Units
+    ACTIVE --> ARCHIVED : Soft-Deleted by Admin / Vendor
+    OUT_OF_STOCK --> ARCHIVED : Product Discontinued
+    ARCHIVED --> [*]
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        primaryColor: '#4f46e5',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#6366f1',
+        lineColor: '#94a3b8',
+        secondaryColor: '#1e293b',
+        tertiaryColor: '#0f172a',
+        fontFamily: 'Plus Jakarta Sans'
+      }
+    });
+  </script>
+</body>
+</html>
