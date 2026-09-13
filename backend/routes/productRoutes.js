@@ -1,15 +1,23 @@
 const express = require("express");
 const router = express.Router();
 
+// const {
+//     createProduct,
+//     getProducts,
+//     getMyProducts,
+//     getProduct,
+//     updateProduct,
+//     deleteProduct,
+// } = require("../controllers/productController");
 const {
-    createProduct,
-    getProducts,
-    getMyProducts,
-    getProduct,
-    updateProduct,
-    deleteProduct,
+  createProduct,
+  getProducts,
+  getMyProducts,
+  getOutOfStockProducts,
+  getProduct,
+  updateProduct,
+  deleteProduct
 } = require("../controllers/productController");
-
 const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
 const validate = require("../middleware/validate");
@@ -18,11 +26,18 @@ const { createProductSchema, updateProductSchema, productQuerySchema } = require
 // Public Routes
 router.get("/", validate(productQuerySchema, "query"), getProducts);
 router.get(
+  "/my-products/out-of-stock",
+  protect,
+  authorize("VENDOR"),
+  getOutOfStockProducts
+);
+router.get(
     "/my-products",
     protect,
     authorize("VENDOR", "ADMIN"),
     getMyProducts
 );
+
 router.get("/:id", getProduct);
 
 // Vendor & Admin Routes
@@ -37,7 +52,7 @@ router.post(
 router.put(
     "/:id",
     protect,
-     authorize("ADMIN", "VENDOR"),
+    authorize("ADMIN", "VENDOR"),
     validate(updateProductSchema), updateProduct
 );
 router.delete(
