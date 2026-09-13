@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -37,43 +37,43 @@ model User {
   createdAt     DateTime  @default(now())
   vendorRequest Boolean   @default(false)
 
-  products      Product[]
-  cart          Cart?
-  orders        Order[]
+  products Product[]
+  cart     Cart?
+  orders   Order[]
 }
 
 model Category {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   name      String
-  slug      String    @unique
-  createdAt DateTime  @default(now())
+  slug      String   @unique
+  createdAt DateTime @default(now())
 
-  products  Product[]
+  products Product[]
 }
 
 model Product {
-  id          Int       @id @default(autoincrement())
+  id          Int           @id @default(autoincrement())
   name        String
   description String
-  price       Decimal   @db.Decimal(10, 2)
+  price       Decimal       @db.Decimal(10, 2)
   stock       Int
   imageUrl    String?
   status      ProductStatus @default(DRAFT)
   deleted     Boolean       @default(false)
   deletedAt   DateTime?
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  vendorId    Int
-  categoryId  Int
+  vendorId   Int
+  categoryId Int
 
-  vendor      User      @relation(fields: [vendorId], references: [id])
-  category    Category  @relation(fields: [categoryId], references: [id])
+  vendor   User     @relation(fields: [vendorId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
 
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-  images      ProductImage[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  images     ProductImage[]
 
   @@index([categoryId, status, deleted])
   @@index([price])
@@ -86,30 +86,31 @@ model ProductImage {
   productId Int
   createdAt DateTime @default(now())
 
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
 }
 
 model Cart {
-  id        Int        @id @default(autoincrement())
-  userId    Int        @unique
-  user      User       @relation(fields: [userId], references: [id])
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
 
-  items     CartItem[]
+  user User @relation(fields: [userId], references: [id])
 
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  items CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CartItem {
-  id        Int      @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   cartId    Int
   productId Int
-  quantity  Int      @default(1)
+  quantity  Int @default(1)
 
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id])
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
 
   @@unique([cartId, productId])
 }
@@ -120,22 +121,22 @@ model Order {
   totalAmount Decimal     @db.Decimal(10, 2)
   status      OrderStatus @default(PENDING)
 
-  user        User        @relation(fields: [userId], references: [id])
-  items       OrderItem[]
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model OrderItem {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   orderId   Int
   productId Int
   quantity  Int
-  price     Decimal  @db.Decimal(10, 2)
+  price     Decimal @db.Decimal(10, 2)
 
-  order     Order    @relation(fields: [orderId], references: [id])
-  product   Product  @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@unique([orderId, productId])
 }
