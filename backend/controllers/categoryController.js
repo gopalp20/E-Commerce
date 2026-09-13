@@ -12,8 +12,21 @@ const categoryId = (value) => {
 };
 
 const createCategory = asyncHandler(async (req, res) => {
+  const { name, slug } = req.body;
+
+  const existingCategory = await prisma.category.findUnique({
+    where: { slug }
+  });
+
+  if (existingCategory) {
+    throw new AppError("Category already exists", 409);
+  }
+
   const category = await prisma.category.create({
-    data: req.body
+    data: {
+      name,
+      slug
+    }
   });
 
   res.status(201).json({

@@ -29,7 +29,7 @@ router.get("/:id", getProduct);
 router.post(
     "/",
     protect,
-    authorize("ADMIN", "VENDOR"),
+    authorize("VENDOR"),
     validate(createProductSchema), createProduct
 );
 

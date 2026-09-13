@@ -18,8 +18,15 @@ const validate = (schema, target = "body") => (req, res, next) => {
 
   // Express 5 exposes req.query through a getter, so retain normalized query
   // values separately instead of relying on assignment to req.query.
-  req.validated = { ...(req.validated || {}), [target]: result.data };
-  if (target !== "query") req[target] = result.data;
+  req.validated = {
+    ...(req.validated || {}),
+    [target]: result.data
+  };
+
+  if (target !== "query") {
+    req[target] = result.data;
+  }
+
   next();
 };
 
