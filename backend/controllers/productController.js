@@ -1,6 +1,7 @@
 const prisma = require("../config/prisma");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
+const { increaseStock } = require("../services/inventoryService");
 
 const publicVendorSelect = {
   id: true,
@@ -14,6 +15,8 @@ const publicInclude = {
   category: true,
   images: true
 };
+
+// ==================== ENSURE PRODUCT OWNER ====================
 
 const ensureProductOwner = async (productId, user) => {
   const product = await prisma.product.findFirst({
@@ -33,6 +36,44 @@ const ensureProductOwner = async (productId, user) => {
 
   return product;
 };
+
+// ==================== INCREASE PRODUCT STOCK ====================
+
+const increaseProductStock = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id)) {
+    throw new AppError("Invalid product ID", 400);
+  }
+
+  const { quantity } = req.body;
+
+  // Make sure the product belongs to the logged-in vendor
+  const product = await prisma.product.findFirst({
+    where: {
+      id,
+      vendorId: req.user.id,
+      deleted: false
+    }
+  });
+
+  if (!product) {
+    throw new AppError("Product not found", 404);
+  }
+
+  // Use inventory service to increase stock
+  const updatedProduct = await increaseStock(
+    prisma,
+    id,
+    quantity
+  );
+
+  res.json({
+    success: true,
+    message: "Stock increased successfully",
+    product: updatedProduct
+  });
+});
 
 // ==================== CREATE PRODUCT ====================
 
@@ -54,8 +95,6 @@ const createProduct = asyncHandler(async (req, res) => {
     throw new AppError("Category not found", 404);
   }
 
-  // Product with stock is immediately available.
-  // Product with zero stock is automatically OUT_OF_STOCK.
   const status =
     fields.stock === 0
       ? "OUT_OF_STOCK"
@@ -65,11 +104,8 @@ const createProduct = asyncHandler(async (req, res) => {
     data: {
       ...fields,
       status,
-
       imageUrl: imageUrl || images[0] || null,
-
       vendorId: req.user.id,
-
       categoryId,
 
       images: images.length
@@ -349,8 +385,6 @@ const updateProduct = asyncHandler(async (req, res) => {
     );
   }
 
-  // If stock becomes zero, always mark OUT_OF_STOCK.
-  // Otherwise use the supplied status if provided.
   const resolvedStatus =
     stock === 0
       ? "OUT_OF_STOCK"
@@ -458,5 +492,6 @@ module.exports = {
   getOutOfStockProducts,
   getProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  increaseProductStock
 };

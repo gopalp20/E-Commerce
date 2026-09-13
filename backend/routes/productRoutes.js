@@ -1,14 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-// const {
-//     createProduct,
-//     getProducts,
-//     getMyProducts,
-//     getProduct,
-//     updateProduct,
-//     deleteProduct,
-// } = require("../controllers/productController");
+
 const {
   createProduct,
   getProducts,
@@ -16,12 +9,18 @@ const {
   getOutOfStockProducts,
   getProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  increaseProductStock
 } = require("../controllers/productController");
 const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
 const validate = require("../middleware/validate");
-const { createProductSchema, updateProductSchema, productQuerySchema } = require("../validations/schemas");
+const {
+  createProductSchema,
+  updateProductSchema,
+  productQuerySchema,
+  stockUpdateSchema
+} = require("../validations/schemas");
 
 // Public Routes
 router.get("/", validate(productQuerySchema, "query"), getProducts);
@@ -61,7 +60,13 @@ router.delete(
     authorize("ADMIN", "VENDOR"),
     deleteProduct
 );
-
+router.patch(
+  "/:id/stock",
+  protect,
+  authorize("VENDOR"),
+  validate(stockUpdateSchema),
+  increaseProductStock
+);
 module.exports = router;
 
 

@@ -192,17 +192,20 @@ const cartItemUpdateSchema = z.object({
 });
 
 // ==================== EXPORTS ====================
-
+const stockUpdateSchema = z.object({
+  quantity: z.coerce
+    .number()
+    .int()
+    .positive("Quantity must be greater than 0")
+});
 module.exports = {
   registerSchema,
   loginSchema,
-
   createProductSchema,
   updateProductSchema,
   productQuerySchema,
-
   categorySchema,
-
   cartItemSchema,
-  cartItemUpdateSchema
+  cartItemUpdateSchema,
+  stockUpdateSchema
 };
