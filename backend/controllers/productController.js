@@ -2,6 +2,7 @@ const prisma = require("../config/prisma");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
 const { increaseStock } = require("../services/inventoryService");
+const { resolveProductStatus } = require("../services/productStatusService");
 
 const publicVendorSelect = {
   id: true,
@@ -137,7 +138,7 @@ const getMyProducts = asyncHandler(async (req, res) => {
         };
 
   const products = await prisma.product.findMany({
-    where,
+    where: { ...where, deleted: false },
 
     include: {
       category: true,
@@ -385,10 +386,13 @@ const updateProduct = asyncHandler(async (req, res) => {
     );
   }
 
-  const resolvedStatus =
-    stock === 0
-      ? "OUT_OF_STOCK"
-      : status;
+  const currentProduct = await prisma.product.findUnique({ where: { id } });
+  const resolvedStock = stock === undefined ? currentProduct.stock : stock;
+  const resolvedStatus = resolveProductStatus({
+    currentStatus: currentProduct.status,
+    stock: resolvedStock,
+    requestedStatus: status
+  });
 
   const product =
     await prisma.product.update({

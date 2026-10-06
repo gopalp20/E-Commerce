@@ -3,18 +3,25 @@ const router = express.Router();
 
 const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
+const validate = require("../middleware/validate");
+const { orderStatusSchema } = require("../validations/schemas");
 
 const {
     createOrder,
     getMyOrders,
     getMyOrder,
+    cancelMyOrder,
+    getVendorOrders,
+    updateOrderStatus,
 } = require("../controllers/orderController");
 
-// Customer-only order routes.
-router.use(protect, authorize("CUSTOMER"));
+router.use(protect);
 
-router.post("/", createOrder);
-router.get("/my-orders", getMyOrders);
-router.get("/:id", getMyOrder);
+router.post("/", authorize("CUSTOMER"), createOrder);
+router.get("/my-orders", authorize("CUSTOMER"), getMyOrders);
+router.patch("/:id/cancel", authorize("CUSTOMER"), cancelMyOrder);
+router.get("/vendor", authorize("VENDOR"), getVendorOrders);
+router.patch("/:id/status", authorize("VENDOR"), validate(orderStatusSchema), updateOrderStatus);
+router.get("/:id", authorize("CUSTOMER"), getMyOrder);
 
 module.exports = router;

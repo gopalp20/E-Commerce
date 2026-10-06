@@ -8,6 +8,8 @@ const productStatus = z.enum([
   "DRAFT",
   "ARCHIVED"
 ]);
+const orderStatus = z.enum(["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"]);
+const role = z.enum(["CUSTOMER", "VENDOR", "ADMIN"]);
 
 // ==================== AUTH ====================
 
@@ -198,6 +200,12 @@ const stockUpdateSchema = z.object({
     .int()
     .positive("Quantity must be greater than 0")
 });
+const orderStatusSchema = z.object({ status: orderStatus });
+const userRoleSchema = z.object({ role });
+const adminUserQuerySchema = z.object({
+  role: role.optional(),
+  search: z.string().trim().min(1).max(100).optional()
+});
 module.exports = {
   registerSchema,
   loginSchema,
@@ -207,5 +215,8 @@ module.exports = {
   categorySchema,
   cartItemSchema,
   cartItemUpdateSchema,
-  stockUpdateSchema
+  stockUpdateSchema,
+  orderStatusSchema,
+  userRoleSchema,
+  adminUserQuerySchema
 };

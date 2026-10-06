@@ -19,6 +19,43 @@ const orderInclude = {
   }
 };
 
+const orderId = (value) => {
+  const id = Number(value);
+  if (!Number.isInteger(id)) throw new AppError("Invalid order ID", 400);
+  return id;
+};
+
+const allowedTransitions = {
+  PENDING: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["SHIPPED", "CANCELLED"],
+  SHIPPED: ["DELIVERED"],
+  DELIVERED: [],
+  CANCELLED: []
+};
+
+const restockOrder = async (tx, items) => {
+  for (const item of items) {
+    const product = await tx.product.findUnique({
+      where: { id: item.productId },
+      select: { status: true }
+    });
+    await tx.product.update({
+      where: { id: item.productId },
+      data: {
+        stock: { increment: item.quantity },
+        ...(product.status === "OUT_OF_STOCK" && { status: "ACTIVE" })
+      }
+    });
+  }
+};
+
+const assertTransition = (order, nextStatus) => {
+  if (order.status === nextStatus) return;
+  if (!allowedTransitions[order.status].includes(nextStatus)) {
+    throw new AppError(`Cannot change an order from ${order.status} to ${nextStatus}`, 400);
+  }
+};
+
 // ==================== CREATE ORDER ====================
 
 const createOrder = asyncHandler(async (req, res) => {
@@ -139,14 +176,7 @@ const getMyOrders = asyncHandler(async (req, res) => {
 // ==================== GET MY ORDER ====================
 
 const getMyOrder = asyncHandler(async (req, res) => {
-  const id = Number(req.params.id);
-
-  if (!Number.isInteger(id)) {
-    throw new AppError(
-      "Invalid order ID",
-      400
-    );
-  }
+  const id = orderId(req.params.id);
 
   const order = await prisma.order.findFirst({
     where: {
@@ -170,10 +200,65 @@ const getMyOrder = asyncHandler(async (req, res) => {
   });
 });
 
+const cancelMyOrder = asyncHandler(async (req, res) => {
+  const id = orderId(req.params.id);
+  const order = await prisma.$transaction(async (tx) => {
+    const existing = await tx.order.findFirst({ where: { id, userId: req.user.id }, include: { items: true } });
+    if (!existing) throw new AppError("Order not found", 404);
+    assertTransition(existing, "CANCELLED");
+    await restockOrder(tx, existing.items);
+    return tx.order.update({ where: { id }, data: { status: "CANCELLED" }, include: orderInclude });
+  });
+  res.json({ success: true, message: "Order cancelled successfully", order });
+});
+
+const getVendorOrders = asyncHandler(async (req, res) => {
+  const orders = await prisma.order.findMany({
+    where: { items: { some: { product: { vendorId: req.user.id } } } },
+    include: {
+      items: { where: { product: { vendorId: req.user.id } }, include: { product: { select: { id: true, name: true, imageUrl: true, images: true } } } },
+      user: { select: { id: true, name: true, email: true } }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+  res.json({ success: true, count: orders.length, orders });
+});
+
+const getAllOrders = asyncHandler(async (req, res) => {
+  const orders = await prisma.order.findMany({
+    include: { ...orderInclude, user: { select: { id: true, name: true, email: true } } },
+    orderBy: { createdAt: "desc" }
+  });
+  res.json({ success: true, count: orders.length, orders });
+});
+
+const updateOrderStatus = asyncHandler(async (req, res) => {
+  const id = orderId(req.params.id);
+  const { status } = req.body;
+  const order = await prisma.$transaction(async (tx) => {
+    const existing = await tx.order.findUnique({
+      where: { id },
+      include: { items: { include: { product: { select: { vendorId: true } } } } }
+    });
+    if (!existing) throw new AppError("Order not found", 404);
+    if (req.user.role === "VENDOR" && existing.items.some((item) => item.product.vendorId !== req.user.id)) {
+      throw new AppError("Only an administrator can update a multi-vendor order", 403);
+    }
+    assertTransition(existing, status);
+    if (status === "CANCELLED") await restockOrder(tx, existing.items);
+    return tx.order.update({ where: { id }, data: { status }, include: orderInclude });
+  });
+  res.json({ success: true, message: "Order status updated", order });
+});
+
 // ==================== EXPORTS ====================
 
 module.exports = {
   createOrder,
   getMyOrders,
-  getMyOrder
+  getMyOrder,
+  cancelMyOrder,
+  getVendorOrders,
+  getAllOrders,
+  updateOrderStatus
 };
