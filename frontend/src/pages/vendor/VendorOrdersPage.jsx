@@ -8,13 +8,13 @@ import { SearchBar } from '../../components/common/SearchBar';
 import { useToast } from '../../context/ToastContext';
 import { ShoppingBag, Calendar, Truck, User } from 'lucide-react';
 
-const ORDER_STATUSES = [
-  { label: 'PENDING', value: 'PENDING' },
-  { label: 'CONFIRMED', value: 'CONFIRMED' },
-  { label: 'SHIPPED', value: 'SHIPPED' },
-  { label: 'DELIVERED', value: 'DELIVERED' },
-  { label: 'CANCELLED', value: 'CANCELLED' },
-];
+const NEXT_STATUSES = {
+  PENDING: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['DELIVERED'],
+  DELIVERED: [],
+  CANCELLED: [],
+};
 
 export const VendorOrdersPage = () => {
   const [orders, setOrders] = useState([]);
@@ -46,7 +46,7 @@ export const VendorOrdersPage = () => {
       toast.success(`Order #${orderId} marked as ${newStatus}`);
       fetchOrders();
     } catch (err) {
-      toast.error('Failed to update status');
+      toast.error(err.message || 'Failed to update status');
     } finally {
       setUpdatingId(null);
     }
@@ -76,8 +76,8 @@ export const VendorOrdersPage = () => {
       accessor: 'customerName',
       render: (row) => (
         <div className="text-xs">
-          <p className="font-bold text-slate-900">{row.customerName || 'Alex Johnson'}</p>
-          <p className="text-[11px] text-slate-400">{row.customerEmail}</p>
+          <p className="font-bold text-slate-900">{row.user?.name || row.customerName || 'Customer'}</p>
+          <p className="text-[11px] text-slate-400">{row.user?.email || row.customerEmail || ''}</p>
         </div>
       ),
     },
@@ -98,7 +98,7 @@ export const VendorOrdersPage = () => {
       accessor: 'totalAmount',
       render: (row) => (
         <span className="font-bold text-slate-900 text-xs">
-          ${Number(row.totalAmount).toFixed(2)}
+          ${Number((row.items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)).toFixed(2)}
         </span>
       ),
     },
@@ -131,9 +131,9 @@ export const VendorOrdersPage = () => {
             onChange={(e) => handleStatusChange(row.id, e.target.value)}
             className="w-full text-xs font-semibold py-1 px-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           >
-            {ORDER_STATUSES.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
+            {[row.status, ...(NEXT_STATUSES[row.status] || [])].map((status) => (
+              <option key={status} value={status}>
+                {status}
               </option>
             ))}
           </select>

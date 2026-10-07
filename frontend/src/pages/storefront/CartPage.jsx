@@ -184,7 +184,7 @@ export const CartPage = () => {
             </div>
 
             <div className="flex justify-between text-slate-600">
-              <span>Estimated Shipping</span>
+              <span>Shipping</span>
               <span className="font-bold text-slate-900">
                 {shipping === 0 ? (
                   <span className="text-emerald-600 uppercase font-extrabold">Free</span>
@@ -195,7 +195,7 @@ export const CartPage = () => {
             </div>
 
             <div className="flex justify-between text-slate-600">
-              <span>Estimated Sales Tax (8%)</span>
+              <span>Tax</span>
               <span className="font-bold text-slate-900">${tax.toFixed(2)}</span>
             </div>
 
@@ -219,7 +219,7 @@ export const CartPage = () => {
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-center gap-2 text-[11px] text-slate-500 text-center">
             <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>256-Bit SSL Encrypted & Escrow Protected</span>
+            <span>Order stock availability is checked when you place the order.</span>
           </div>
         </div>
       </div>

@@ -1,47 +1,48 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Layouts
-import { StorefrontLayout } from './layouts/StorefrontLayout';
-import { VendorLayout } from './layouts/VendorLayout';
-import { AdminLayout } from './layouts/AdminLayout';
+const StorefrontLayout = lazy(() => import('./layouts/StorefrontLayout').then((m) => ({ default: m.StorefrontLayout })));
+const VendorLayout = lazy(() => import('./layouts/VendorLayout').then((m) => ({ default: m.VendorLayout })));
+const AdminLayout = lazy(() => import('./layouts/AdminLayout').then((m) => ({ default: m.AdminLayout })));
 
 // Storefront Pages
-import { HomePage } from './pages/storefront/HomePage';
-import { ProductListingPage } from './pages/storefront/ProductListingPage';
-import { ProductDetailPage } from './pages/storefront/ProductDetailPage';
-import { CartPage } from './pages/storefront/CartPage';
-import { CheckoutPage } from './pages/storefront/CheckoutPage';
-import { OrdersPage } from './pages/storefront/OrdersPage';
-import { OrderDetailPage } from './pages/storefront/OrderDetailPage';
-import { CustomerProfilePage } from './pages/storefront/CustomerProfilePage';
+const HomePage = lazy(() => import('./pages/storefront/HomePage').then((m) => ({ default: m.HomePage })));
+const ProductListingPage = lazy(() => import('./pages/storefront/ProductListingPage').then((m) => ({ default: m.ProductListingPage })));
+const ProductDetailPage = lazy(() => import('./pages/storefront/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const CartPage = lazy(() => import('./pages/storefront/CartPage').then((m) => ({ default: m.CartPage })));
+const CheckoutPage = lazy(() => import('./pages/storefront/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const OrdersPage = lazy(() => import('./pages/storefront/OrdersPage').then((m) => ({ default: m.OrdersPage })));
+const OrderDetailPage = lazy(() => import('./pages/storefront/OrderDetailPage').then((m) => ({ default: m.OrderDetailPage })));
+const CustomerProfilePage = lazy(() => import('./pages/storefront/CustomerProfilePage').then((m) => ({ default: m.CustomerProfilePage })));
 
 // Auth Pages
-import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
+const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
 
 // Vendor Dashboard Pages
-import { VendorDashboardPage } from './pages/vendor/VendorDashboardPage';
-import { VendorProductsPage } from './pages/vendor/VendorProductsPage';
-import { VendorProductFormPage } from './pages/vendor/VendorProductFormPage';
-import { VendorOrdersPage } from './pages/vendor/VendorOrdersPage';
-import { VendorProfilePage } from './pages/vendor/VendorProfilePage';
+const VendorDashboardPage = lazy(() => import('./pages/vendor/VendorDashboardPage').then((m) => ({ default: m.VendorDashboardPage })));
+const VendorProductsPage = lazy(() => import('./pages/vendor/VendorProductsPage').then((m) => ({ default: m.VendorProductsPage })));
+const VendorProductFormPage = lazy(() => import('./pages/vendor/VendorProductFormPage').then((m) => ({ default: m.VendorProductFormPage })));
+const VendorOrdersPage = lazy(() => import('./pages/vendor/VendorOrdersPage').then((m) => ({ default: m.VendorOrdersPage })));
+const VendorProfilePage = lazy(() => import('./pages/vendor/VendorProfilePage').then((m) => ({ default: m.VendorProfilePage })));
 
 // Admin Dashboard Pages
-import { AdminOverviewPage } from './pages/admin/AdminOverviewPage';
-import { AdminUsersPage } from './pages/admin/AdminUsersPage';
-import { AdminVendorsPage } from './pages/admin/AdminVendorsPage';
-import { AdminProductsPage } from './pages/admin/AdminProductsPage';
-import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
-import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
-import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
+const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
+const AdminVendorsPage = lazy(() => import('./pages/admin/AdminVendorsPage').then((m) => ({ default: m.AdminVendorsPage })));
+const AdminProductsPage = lazy(() => import('./pages/admin/AdminProductsPage').then((m) => ({ default: m.AdminProductsPage })));
+const AdminCategoriesPage = lazy(() => import('./pages/admin/AdminCategoriesPage').then((m) => ({ default: m.AdminCategoriesPage })));
+const AdminOrdersPage = lazy(() => import('./pages/admin/AdminOrdersPage').then((m) => ({ default: m.AdminOrdersPage })));
+const AdminAnalyticsPage = lazy(() => import('./pages/admin/AdminAnalyticsPage').then((m) => ({ default: m.AdminAnalyticsPage })));
 
 // Common
-import { NotFoundPage } from './pages/NotFoundPage';
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 
 export const App = () => {
   return (
+    <Suspense fallback={<div className="min-h-screen grid place-items-center text-sm text-slate-500">Loading…</div>}>
     <Routes>
       {/* Customer Storefront Routes */}
       <Route element={<StorefrontLayout />}>
@@ -95,6 +96,7 @@ export const App = () => {
       {/* 404 Catch-All */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
   );
 };
 

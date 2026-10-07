@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { productsApi } from '../../api/products';
+import { adminApi } from '../../api/admin';
 import { Table } from '../../components/common/Table';
 import { Badge } from '../../components/common/Badge';
 import { SearchBar } from '../../components/common/SearchBar';
@@ -23,7 +23,7 @@ export const AdminProductsPage = () => {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const res = await productsApi.getProducts({ limit: 100 });
+      const res = await adminApi.getAdminProducts();
       if (res.products) setProducts(res.products);
     } catch (err) {
       console.error('Failed to load admin products', err);
@@ -40,7 +40,7 @@ export const AdminProductsPage = () => {
     if (!deleteTarget) return;
     try {
       setIsDeleting(true);
-      await productsApi.deleteProduct(deleteTarget.id);
+      await adminApi.archiveProduct(deleteTarget.id);
       toast.success(`"${deleteTarget.name}" archived by administrator.`);
       setDeleteTarget(null);
       fetchProducts();

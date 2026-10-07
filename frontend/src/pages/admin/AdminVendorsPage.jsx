@@ -5,7 +5,7 @@ import { Table } from '../../components/common/Table';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { useToast } from '../../context/ToastContext';
-import { Store, CheckCircle, Clock, ShieldAlert } from 'lucide-react';
+import { Store, Clock } from 'lucide-react';
 
 export const AdminVendorsPage = () => {
   const [requests, setRequests] = useState([]);
@@ -93,7 +93,7 @@ export const AdminVendorsPage = () => {
 
   const vendorColumns = [
     {
-      header: 'Merchant Studio',
+      header: 'Vendor Account',
       accessor: 'name',
       render: (row) => (
         <div className="flex items-center gap-3">
@@ -101,26 +101,10 @@ export const AdminVendorsPage = () => {
             <Store className="w-5 h-5" />
           </div>
           <div>
-            <p className="font-bold text-slate-900 text-xs">{row.storeName || `${row.name}'s Studio`}</p>
+            <p className="font-bold text-slate-900 text-xs">{row.name}</p>
             <p className="text-[11px] text-slate-400">Owner: {row.name} ({row.email})</p>
           </div>
         </div>
-      ),
-    },
-    {
-      header: 'Merchant Tier',
-      render: () => (
-        <Badge variant="SUCCESS" size="sm" showDot>
-          Tier-1 Verified
-        </Badge>
-      ),
-    },
-    {
-      header: 'Account Status',
-      render: () => (
-        <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-          <CheckCircle className="w-3.5 h-3.5" /> Good Standing
-        </span>
       ),
     },
   ];
@@ -132,7 +116,7 @@ export const AdminVendorsPage = () => {
           Vendor Ecosystem & Approvals
         </h2>
         <p className="text-xs text-slate-500 mt-1">
-          Review onboarding applications, verify merchant credentials, and audit active sellers
+          Review vendor applications and view accounts with vendor access
         </p>
       </div>
 

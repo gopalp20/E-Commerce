@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { DashboardSidebar } from '../components/dashboard/DashboardSidebar';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
-import { RoleSwitcherBar } from '../components/common/RoleSwitcherBar';
 import {
   LayoutDashboard,
   Package,
@@ -59,7 +58,6 @@ export const VendorLayout = () => {
         </main>
       </div>
 
-      <RoleSwitcherBar />
     </div>
   );
 };

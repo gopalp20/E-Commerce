@@ -48,12 +48,12 @@ export const OrderDetailPage = () => {
   const handleCancelOrder = async () => {
     try {
       setIsCancelling(true);
-      await ordersApi.updateOrderStatus(id, 'CANCELLED');
+      await ordersApi.cancelOrder(id);
       toast.success('Order has been cancelled.');
       setCancelModalOpen(false);
       fetchOrder();
     } catch (err) {
-      toast.error('Failed to cancel order.');
+      toast.error(err.message || 'Failed to cancel order.');
     } finally {
       setIsCancelling(false);
     }
@@ -142,26 +142,8 @@ export const OrderDetailPage = () => {
         createdAt={order.createdAt}
       />
 
-      {/* Tracking info callout */}
-      {order.trackingNumber && order.trackingNumber !== 'PENDING' && (
-        <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between gap-4 text-xs text-indigo-950">
-          <div className="flex items-center gap-3">
-            <Truck className="w-5 h-5 text-indigo-600 flex-shrink-0" />
-            <div>
-              <p className="font-bold">Carrier Tracking: {order.trackingNumber}</p>
-              <p className="text-slate-500 text-[11px]">Dispatched via {order.carrier || 'FedEx Express'} - Real-time transit updates</p>
-            </div>
-          </div>
-          <span className="text-[11px] font-bold text-indigo-600 bg-white px-2.5 py-1 rounded-lg border border-indigo-200">
-            Active Shipment
-          </span>
-        </div>
-      )}
-
-      {/* 2-Column Details: Products + Shipping/Payment Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Purchased Products List */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-subtle p-6 space-y-4">
+      <div className="grid grid-cols-1 gap-8 items-start">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-subtle p-6 space-y-4">
           <h3 className="text-base font-bold text-slate-900 pb-3 border-b border-slate-100">
             Purchased Items ({order.items?.length || 0})
           </h3>
@@ -176,7 +158,7 @@ export const OrderDetailPage = () => {
                 />
                 <div className="flex-1 min-w-0">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block">
-                    {item.product?.vendorName || 'Verified Merchant'}
+                    Marketplace item
                   </span>
                   <Link
                     to={`/products/${item.productId}`}
@@ -205,10 +187,6 @@ export const OrderDetailPage = () => {
                 ${Number(order.totalAmount).toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between text-slate-600">
-              <span>Express Delivery</span>
-              <span className="font-semibold text-emerald-600">FREE</span>
-            </div>
             <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline">
               <span className="text-sm font-bold text-slate-900">Grand Total</span>
               <span className="text-xl font-black text-slate-900">
@@ -218,43 +196,6 @@ export const OrderDetailPage = () => {
           </div>
         </div>
 
-        {/* Shipping & Payment Meta */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Shipping Address */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-subtle p-5 space-y-3">
-            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-slate-700 pb-2 border-b border-slate-100">
-              <MapPin className="w-4 h-4 text-indigo-600" />
-              <span>Shipping Destination</span>
-            </div>
-            <div className="text-xs text-slate-600 space-y-1">
-              <p className="font-bold text-slate-900 text-sm">
-                {order.shippingAddress?.fullName || 'Alex Johnson'}
-              </p>
-              <p>{order.shippingAddress?.street || '742 Evergreen Terrace'}</p>
-              <p>
-                {order.shippingAddress?.city}, {order.shippingAddress?.state}{' '}
-                {order.shippingAddress?.postalCode}
-              </p>
-              <p>{order.shippingAddress?.country || 'United States'}</p>
-            </div>
-          </div>
-
-          {/* Payment Method */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-subtle p-5 space-y-3">
-            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-slate-700 pb-2 border-b border-slate-100">
-              <CreditCard className="w-4 h-4 text-indigo-600" />
-              <span>Payment Details</span>
-            </div>
-            <div className="text-xs text-slate-600 space-y-1">
-              <p className="font-semibold text-slate-800">
-                {order.paymentMethod || 'Credit Card'}
-              </p>
-              <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Verified & Escrow Protected
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Cancel Order Confirmation */}

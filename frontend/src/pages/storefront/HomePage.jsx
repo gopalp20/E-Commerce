@@ -35,6 +35,7 @@ export const HomePage = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const heroProduct = featuredProducts[0];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,10 +46,13 @@ export const HomePage = () => {
           categoriesApi.getCategories(),
         ]);
 
-        if (prodRes.products) {
+        if (prodRes.products && prodRes.products.length > 0) {
           const prods = prodRes.products;
-          setFeaturedProducts(prods.filter((p) => p.featured || p.rating >= 4.8).slice(0, 4));
-          setBestSellers(prods.filter((p) => p.isBestSeller || p.reviewCount > 25).slice(0, 4));
+          const featured = prods.filter((p) => p.featured || (p.rating && p.rating >= 4.8));
+          setFeaturedProducts(featured.length > 0 ? featured.slice(0, 4) : prods.slice(0, 4));
+
+          const best = prods.filter((p) => p.isBestSeller || (p.reviewCount && p.reviewCount > 25));
+          setBestSellers(best.length > 0 ? best.slice(0, 4) : prods.slice(0, 4));
         }
         if (catRes.categories) {
           setCategories(catRes.categories);
@@ -76,7 +80,7 @@ export const HomePage = () => {
             <div className="lg:col-span-7 space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-indigo-300">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Next-Generation Multi-Vendor Marketplace</span>
+                <span>Products from independent vendors</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
@@ -87,7 +91,7 @@ export const HomePage = () => {
               </h1>
 
               <p className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed font-normal">
-                Discover exceptional hardware peripherals, precision acoustic gear, and technical apparel from vetted independent studios worldwide.
+                Browse the latest products listed by marketplace vendors. Search by name, category, and price to find what you need.
               </p>
 
               {/* Action CTAs */}
@@ -103,9 +107,9 @@ export const HomePage = () => {
                   variant="outline"
                   size="lg"
                   className="bg-slate-800/80 hover:bg-slate-800 text-white border-slate-700"
-                  onClick={() => navigate('/products?category=audio')}
+                  onClick={() => navigate('/products')}
                 >
-                  Browse Audio Gear
+                  Browse Categories
                 </Button>
               </div>
 
@@ -113,15 +117,15 @@ export const HomePage = () => {
               <div className="pt-6 border-t border-slate-800/80 grid grid-cols-3 gap-4 text-xs text-slate-400">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span>Escrow Protection</span>
+                  <span>Secure account access</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span>Verified Merchants</span>
+                  <span>Vendor listings</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span>Real-Time Tracking</span>
+                  <span>Order status updates</span>
                 </div>
               </div>
             </div>
@@ -130,21 +134,21 @@ export const HomePage = () => {
             <div className="lg:col-span-5 relative">
               <div className="relative rounded-3xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-800">
                 <img
-                  src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=80"
-                  alt="Aura Pro Studio Wireless Headphones"
+                  src={heroProduct?.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=80'}
+                  alt={heroProduct?.name || 'Featured marketplace product'}
                   className="w-full aspect-[4/3] object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent flex flex-col justify-end p-6">
                   <div className="inline-block bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md mb-2 w-max">
-                    Featured Studio Drop
+                    Latest listing
                   </div>
                   <h3 className="text-lg font-bold text-white leading-tight">
-                    Aura Pro Studio Wireless Headphones
+                    {heroProduct?.name || 'Explore the marketplace catalog'}
                   </h3>
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800">
-                    <span className="text-xl font-extrabold text-white">$349.00</span>
+                    <span className="text-xl font-extrabold text-white">{heroProduct ? `$${Number(heroProduct.price).toFixed(2)}` : ''}</span>
                     <Link
-                      to="/products/1"
+                      to={heroProduct ? `/products/${heroProduct.id}` : '/products'}
                       className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
                     >
                       View Details <ArrowRight className="w-3.5 h-3.5" />
@@ -245,13 +249,13 @@ export const HomePage = () => {
               Are you a specialized maker, studio, or craft brand?
             </h2>
             <p className="text-sm text-indigo-200 leading-relaxed font-normal">
-              List your catalog directly to thousands of high-intent customers with built-in escrow, automated shipping tracking, and comprehensive merchant analytics.
+              Create an account, submit a vendor request, and list products after an administrator approves it.
             </p>
             <div className="pt-2">
               <Button
                 variant="white"
                 rightIcon={ArrowRight}
-                onClick={() => navigate('/vendor')}
+                onClick={() => navigate('/profile')}
               >
                 Access Vendor Portal
               </Button>
@@ -266,10 +270,10 @@ export const HomePage = () => {
         <div className="flex items-end justify-between mb-8">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-600 mb-1">
-              <TrendingUp className="w-3.5 h-3.5" /> High Customer Demand
+              <TrendingUp className="w-3.5 h-3.5" /> Recently listed
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              Best-Selling Products
+              New products
             </h2>
           </div>
           <Link

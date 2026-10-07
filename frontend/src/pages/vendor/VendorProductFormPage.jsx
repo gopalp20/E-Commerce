@@ -237,6 +237,38 @@ export const VendorProductFormPage = () => {
             helper="Use high-resolution square or 4:3 product photography (Unsplash or CDN link)"
           />
 
+          <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+            <span className="text-slate-500 font-semibold text-[11px]">Quick Image Presets:</span>
+            <button
+              type="button"
+              onClick={() => setImageUrl('https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80')}
+              className="px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-medium text-[11px]"
+            >
+              Headphones
+            </button>
+            <button
+              type="button"
+              onClick={() => setImageUrl('https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80')}
+              className="px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-medium text-[11px]"
+            >
+              Watch
+            </button>
+            <button
+              type="button"
+              onClick={() => setImageUrl('https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80')}
+              className="px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-medium text-[11px]"
+            >
+              Camera
+            </button>
+            <button
+              type="button"
+              onClick={() => setImageUrl('https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=800&q=80')}
+              className="px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-medium text-[11px]"
+            >
+              Fresh Fruit
+            </button>
+          </div>
+
           <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
             <Button
               variant="outline"

@@ -1,11 +1,11 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 8000,
+  timeout: 10000,
 });
 
 // Attach Authorization token to every request if available
@@ -24,11 +24,16 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    // Extract server error message from backend if available
+    const backendMessage = error.response?.data?.message;
+    if (backendMessage) {
+      error.message = backendMessage;
+    }
+
     if (error.response && error.response.status === 401) {
-      // Token expired or unauthorized
-      // Do not clear token if in demo mock mode
-      const isMock = localStorage.getItem('demo_mode') === 'true';
-      if (!isMock) {
+      // Clear token only if we were actually authenticated and not on login/register
+      const url = error.config?.url || '';
+      if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }

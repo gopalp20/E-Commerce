@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { categoriesApi } from '../../api/categories';
 import { SearchBar } from '../common/SearchBar';
 import {
   ShoppingBag,
@@ -23,6 +24,21 @@ export const Navbar = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const res = await categoriesApi.getCategories();
+        if (res.categories && res.categories.length > 0) {
+          setCategories(res.categories);
+        }
+      } catch (err) {
+        console.warn('Navbar categories load error:', err.message);
+      }
+    };
+    fetchCats();
+  }, []);
 
   const handleSearch = (term) => {
     if (term.trim()) {
@@ -35,11 +51,15 @@ export const Navbar = () => {
 
   const navCategories = [
     { name: 'All Products', href: '/products' },
-    { name: 'Electronics', href: '/products?category=electronics' },
-    { name: 'Audio', href: '/products?category=audio' },
-    { name: 'Wearables', href: '/products?category=wearables' },
-    { name: 'Fashion', href: '/products?category=fashion' },
-    { name: 'Workspace', href: '/products?category=workspace' },
+    ...(categories.length > 0
+      ? categories.slice(0, 6).map((c) => ({
+          name: c.name,
+          href: `/products?category=${encodeURIComponent(c.slug || c.id)}`,
+        }))
+      : [
+          { name: 'Electronics', href: '/products?category=elec' },
+          { name: 'Fruits', href: '/products?category=frts' },
+        ]),
   ];
 
   return (
@@ -50,7 +70,7 @@ export const Navbar = () => {
           Official Multi-Vendor Commerce Platform
         </div>
         <div className="mx-auto sm:mx-0 flex items-center gap-4">
-          <span>✨ Free express shipping on all orders over $150</span>
+          <span>Shop products listed by marketplace vendors</span>
         </div>
         <div className="hidden md:flex items-center gap-3 text-slate-400">
           {user?.role === 'VENDOR' ? (

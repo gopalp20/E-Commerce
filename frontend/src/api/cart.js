@@ -1,95 +1,78 @@
 import api from './axios';
-import { mockStorage } from './mockData';
+
+const GUEST_CART_KEY = 'guest_cart';
+
+const getLocalGuestCart = () => {
+  try {
+    return JSON.parse(localStorage.getItem(GUEST_CART_KEY) || '{"items":[]}');
+  } catch {
+    return { items: [] };
+  }
+};
+
+const setLocalGuestCart = (cart) => localStorage.setItem(GUEST_CART_KEY, JSON.stringify(cart));
+const isCustomer = () => Boolean(localStorage.getItem('token')) && JSON.parse(localStorage.getItem('user') || '{}').role === 'CUSTOMER';
+const getServerCart = async () => {
+  const response = await api.get('/cart');
+  return { success: true, cart: response.cart || { items: [] } };
+};
 
 export const cartApi = {
-  getCart: async () => {
-    try {
-      const res = await api.get('/cart');
-      return res;
-    } catch (err) {
-      if (!err.response || err.code === 'ERR_NETWORK') {
-        const cart = mockStorage.getCart();
-        return { success: true, cart };
-      }
-      throw err;
+  getCart: () => isCustomer() ? getServerCart() : Promise.resolve({ success: true, cart: getLocalGuestCart() }),
+
+  addToCart: async (productId, quantity = 1, productDetails = null) => {
+    if (isCustomer()) {
+      await api.post('/cart/items', { productId: Number(productId), quantity: Number(quantity) });
+      return getServerCart();
     }
-  },
-
-  addToCart: async (productId, quantity = 1) => {
-    try {
-      const res = await api.post('/cart/items', { productId, quantity });
-      return res;
-    } catch (err) {
-      if (!err.response || err.code === 'ERR_NETWORK') {
-        const cart = mockStorage.getCart();
-        const products = mockStorage.getProducts();
-        const product = products.find((p) => p.id === Number(productId));
-        if (!product) throw new Error('Product not found');
-
-        const existingIndex = cart.items.findIndex((item) => item.productId === Number(productId));
-        if (existingIndex !== -1) {
-          cart.items[existingIndex].quantity += quantity;
-        } else {
-          cart.items.push({
-            id: Date.now(),
-            productId: Number(productId),
-            quantity,
-            product,
-          });
-        }
-
-        mockStorage.setCart(cart);
-        return { success: true, cart };
-      }
-      throw err;
-    }
+    const cart = getLocalGuestCart();
+    const existing = cart.items.find((item) => item.productId === Number(productId));
+    if (existing) existing.quantity += Number(quantity);
+    else cart.items.push({ id: Date.now(), productId: Number(productId), quantity: Number(quantity), product: productDetails || { id: Number(productId), name: 'Selected Product', price: 0 } });
+    setLocalGuestCart(cart);
+    return { success: true, cart };
   },
 
   updateCartItem: async (itemId, quantity) => {
-    try {
-      const res = await api.put(`/cart/items/${itemId}`, { quantity });
-      return res;
-    } catch (err) {
-      if (!err.response || err.code === 'ERR_NETWORK') {
-        const cart = mockStorage.getCart();
-        const item = cart.items.find((i) => i.id === Number(itemId));
-        if (item) {
-          item.quantity = Math.max(1, quantity);
-          mockStorage.setCart(cart);
-          return { success: true, cart };
-        }
-        throw new Error('Cart item not found');
-      }
-      throw err;
+    if (isCustomer()) {
+      await api.put(`/cart/items/${itemId}`, { quantity: Number(quantity) });
+      return getServerCart();
     }
+    const cart = getLocalGuestCart();
+    const item = cart.items.find((entry) => entry.id === Number(itemId));
+    if (item) item.quantity = Math.max(1, Number(quantity));
+    setLocalGuestCart(cart);
+    return { success: true, cart };
   },
 
   removeCartItem: async (itemId) => {
-    try {
-      const res = await api.delete(`/cart/items/${itemId}`);
-      return res;
-    } catch (err) {
-      if (!err.response || err.code === 'ERR_NETWORK') {
-        const cart = mockStorage.getCart();
-        cart.items = cart.items.filter((i) => i.id !== Number(itemId));
-        mockStorage.setCart(cart);
-        return { success: true, cart };
-      }
-      throw err;
+    if (isCustomer()) {
+      await api.delete(`/cart/items/${itemId}`);
+      return getServerCart();
     }
+    const cart = getLocalGuestCart();
+    cart.items = cart.items.filter((item) => item.id !== Number(itemId));
+    setLocalGuestCart(cart);
+    return { success: true, cart };
   },
 
   clearCart: async () => {
-    try {
-      const res = await api.delete('/cart');
-      return res;
-    } catch (err) {
-      if (!err.response || err.code === 'ERR_NETWORK') {
-        const cart = { items: [] };
-        mockStorage.setCart(cart);
-        return { success: true, cart };
-      }
-      throw err;
+    if (isCustomer()) {
+      await api.delete('/cart');
+      return { success: true, cart: { items: [] } };
+    }
+    setLocalGuestCart({ items: [] });
+    return { success: true, cart: { items: [] } };
+  },
+
+  syncGuestCart: async () => {
+    if (!isCustomer()) return;
+    const guestCart = getLocalGuestCart();
+    for (const item of guestCart.items || []) {
+      await api.post('/cart/items', { productId: Number(item.productId), quantity: Number(item.quantity) });
+      const remaining = getLocalGuestCart();
+      remaining.items = remaining.items.filter((entry) => entry.id !== item.id);
+      setLocalGuestCart(remaining);
     }
   },
 };

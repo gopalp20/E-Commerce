@@ -82,7 +82,6 @@ export const CustomerProfilePage = () => {
             <Input label="Full Name" value={user?.name || ''} readOnly />
             <Input label="Email Address" value={user?.email || ''} readOnly />
             <Input label="Account Role" value={user?.role || 'CUSTOMER'} readOnly />
-            <Input label="Security Clearance" value="Standard 2FA Enabled" readOnly />
           </div>
         </div>
 

@@ -160,6 +160,26 @@ export const VendorProductsPage = () => {
           </Link>
           <button
             type="button"
+            onClick={async () => {
+              const qtyStr = window.prompt(`Enter quantity to add to stock for "${row.name}":`, '10');
+              const qty = parseInt(qtyStr, 10);
+              if (qty > 0) {
+                try {
+                  await productsApi.increaseStock(row.id, qty);
+                  toast.success(`Added +${qty} units to "${row.name}"!`);
+                  fetchProducts();
+                } catch (e) {
+                  toast.error(e.message || 'Failed to increase stock');
+                }
+              }
+            }}
+            className="px-2 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+            title="Increase inventory stock"
+          >
+            +Stock
+          </button>
+          <button
+            type="button"
             onClick={() => setDeleteTarget(row)}
             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
             title="Archive/Delete"

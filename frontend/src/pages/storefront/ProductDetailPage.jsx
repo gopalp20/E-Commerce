@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { productsApi } from '../../api/products';
 import { useCart } from '../../context/CartContext';
-import { RatingStars } from '../../components/common/RatingStars';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { ReviewSection } from '../../components/customer/ReviewSection';
 import {
   ShoppingBag,
   Zap,
@@ -72,10 +70,11 @@ export const ProductDetailPage = () => {
     );
   }
 
+  const fallbackUrl = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
   const isOutOfStock = product.stock <= 0 || product.status === 'OUT_OF_STOCK';
   const allImages = product.images && product.images.length > 0
     ? product.images
-    : [{ id: 1, url: product.imageUrl }];
+    : [{ id: 1, url: product.imageUrl || fallbackUrl }];
 
   const handleAddToCart = async () => {
     if (!isOutOfStock) {
@@ -160,7 +159,7 @@ export const ProductDetailPage = () => {
               <span className="text-xs text-slate-500">Sold by</span>
               <span className="inline-flex items-center gap-1 font-bold text-xs text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
                 <Store className="w-3.5 h-3.5" />
-                {product.vendor?.name || 'Verified Vendor'}
+                {product.vendor?.name || 'Marketplace vendor'}
               </span>
             </div>
 
@@ -178,13 +177,6 @@ export const ProductDetailPage = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
               {product.name}
             </h1>
-            <div className="flex items-center gap-3 mt-3">
-              <RatingStars rating={product.rating || 4.8} size="md" showScore />
-              <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs text-slate-600 font-medium">
-                {product.reviewCount || 24} customer reviews
-              </span>
-            </div>
             <div className="mt-4 flex items-baseline gap-3">
               <span className="text-3xl font-black text-slate-900 tracking-tight">
                 ${Number(product.price).toFixed(2)}
@@ -272,26 +264,6 @@ export const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* Trust Guarantees */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 grid grid-cols-2 gap-3 text-xs text-slate-600">
-            <div className="flex items-center gap-2">
-              <Truck className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-              <span>Complimentary insured shipping</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <RotateCcw className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-              <span>30-day effortless returns</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-              <span>Authenticity verified</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-              <span>2-year warranty included</span>
-            </div>
-          </div>
-
           {/* Vendor Details Card */}
           <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-subtle flex items-start gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0">
@@ -300,26 +272,20 @@ export const ProductDetailPage = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="text-xs font-bold text-slate-900">
-                  {product.vendor?.name || 'Verified Merchant Partner'}
+                  {product.vendor?.name || 'Marketplace vendor'}
                 </h4>
                 <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-semibold border border-emerald-200">
-                  Tier 1 Seller
+                  Seller
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1 leading-normal">
-                Ships directly from the creator studio with full marketplace escrow and delivery guarantees.
+                Seller details are provided by the marketplace listing.
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Reviews Section */}
-      <ReviewSection
-        productId={product.id}
-        averageRating={product.rating || 4.8}
-        reviewCount={product.reviewCount || 24}
-      />
     </div>
   );
 };

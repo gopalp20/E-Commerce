@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, RotateCcw, Filter } from 'lucide-react';
+import { RotateCcw, Filter } from 'lucide-react';
 import { categoriesApi } from '../../api/categories';
 
 export const FilterSidebar = ({
@@ -44,16 +44,10 @@ export const FilterSidebar = ({
     });
   };
 
-  const handleRatingClick = (rating) => {
-    const newRating = filters.rating === String(rating) ? undefined : String(rating);
-    onChange({ ...filters, rating: newRating, page: 1 });
-  };
-
   const hasActiveFilters = Boolean(
     filters.category ||
     filters.minPrice ||
     filters.maxPrice ||
-    filters.rating ||
     filters.search
   );
 
@@ -187,43 +181,6 @@ export const FilterSidebar = ({
         </div>
       </div>
 
-      {/* Customer Rating */}
-      <div className="pt-4">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-3">
-          Minimum Rating
-        </h4>
-        <div className="space-y-1.5">
-          {[4, 3, 2].map((stars) => {
-            const isSelected = filters.rating === String(stars);
-            return (
-              <button
-                key={stars}
-                type="button"
-                onClick={() => handleRatingClick(stars)}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  isSelected
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-3.5 h-3.5 ${
-                        i < stars
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'fill-slate-200 text-slate-200'
-                      }`}
-                    />
-                  ))}
-                  <span className="ml-1 text-slate-700">& up</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
     </aside>
   );
 };

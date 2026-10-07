@@ -5,16 +5,15 @@ import { ProductGrid } from '../../components/customer/ProductGrid';
 import { FilterSidebar } from '../../components/customer/FilterSidebar';
 import { Pagination } from '../../components/common/Pagination';
 import { Select } from '../../components/common/Select';
-import { SearchBar } from '../../components/common/SearchBar';
-import { Filter, SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 
 const SORT_OPTIONS = [
   { label: 'Newest Arrivals', value: 'newest' },
   { label: 'Price: Low to High', value: 'price_asc' },
   { label: 'Price: High to Low', value: 'price_desc' },
-  { label: 'Highest Rated', value: 'rating_desc' },
   { label: 'Name: A to Z', value: 'name_asc' },
   { label: 'Name: Z to A', value: 'name_desc' },
+  { label: 'Oldest Arrivals', value: 'oldest' },
 ];
 
 export const ProductListingPage = () => {
@@ -25,7 +24,6 @@ export const ProductListingPage = () => {
   const category = searchParams.get('category') || '';
   const minPrice = searchParams.get('minPrice') || '';
   const maxPrice = searchParams.get('maxPrice') || '';
-  const rating = searchParams.get('rating') || '';
   const sort = searchParams.get('sort') || 'newest';
   const page = Number(searchParams.get('page')) || 1;
 
@@ -47,7 +45,6 @@ export const ProductListingPage = () => {
           ...(category && { category }),
           ...(minPrice && { minPrice }),
           ...(maxPrice && { maxPrice }),
-          ...(rating && { rating }),
         };
 
         const res = await productsApi.getProducts(params);
@@ -66,7 +63,7 @@ export const ProductListingPage = () => {
 
     fetchCatalog();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [search, category, minPrice, maxPrice, rating, sort, page]);
+  }, [search, category, minPrice, maxPrice, sort, page]);
 
   // Update query params helper
   const updateFilters = (newFilters) => {
@@ -76,7 +73,6 @@ export const ProductListingPage = () => {
     if (newFilters.category) nextParams.set('category', newFilters.category);
     if (newFilters.minPrice) nextParams.set('minPrice', newFilters.minPrice);
     if (newFilters.maxPrice) nextParams.set('maxPrice', newFilters.maxPrice);
-    if (newFilters.rating) nextParams.set('rating', newFilters.rating);
     if (newFilters.sort && newFilters.sort !== 'newest') nextParams.set('sort', newFilters.sort);
     if (newFilters.page && newFilters.page > 1) nextParams.set('page', String(newFilters.page));
 
@@ -89,7 +85,6 @@ export const ProductListingPage = () => {
       category,
       minPrice,
       maxPrice,
-      rating,
       sort: e.target.value,
       page: 1,
     });
@@ -101,7 +96,6 @@ export const ProductListingPage = () => {
       category,
       minPrice,
       maxPrice,
-      rating,
       sort,
       page: newPage,
     });
@@ -155,7 +149,7 @@ export const ProductListingPage = () => {
         {/* Desktop Filter Sidebar */}
         <div className="hidden lg:block lg:col-span-1 sticky top-24">
           <FilterSidebar
-            filters={{ category, minPrice, maxPrice, rating, search }}
+            filters={{ category, minPrice, maxPrice, search }}
             onChange={updateFilters}
             onReset={handleResetFilters}
           />
@@ -208,7 +202,7 @@ export const ProductListingPage = () => {
             </div>
             <div className="py-4 flex-1">
               <FilterSidebar
-                filters={{ category, minPrice, maxPrice, rating, search }}
+                filters={{ category, minPrice, maxPrice, search }}
                 onChange={(f) => {
                   updateFilters(f);
                   setMobileFilterOpen(false);

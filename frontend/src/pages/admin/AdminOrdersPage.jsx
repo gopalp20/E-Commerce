@@ -8,13 +8,13 @@ import { Pagination } from '../../components/common/Pagination';
 import { useToast } from '../../context/ToastContext';
 import { ShoppingBag, Calendar, DollarSign, User, Store } from 'lucide-react';
 
-const ORDER_STATUSES = [
-  { label: 'PENDING', value: 'PENDING' },
-  { label: 'CONFIRMED', value: 'CONFIRMED' },
-  { label: 'SHIPPED', value: 'SHIPPED' },
-  { label: 'DELIVERED', value: 'DELIVERED' },
-  { label: 'CANCELLED', value: 'CANCELLED' },
-];
+const NEXT_STATUSES = {
+  PENDING: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['DELIVERED'],
+  DELIVERED: [],
+  CANCELLED: [],
+};
 
 export const AdminOrdersPage = () => {
   const [orders, setOrders] = useState([]);
@@ -48,7 +48,7 @@ export const AdminOrdersPage = () => {
       toast.success(`Platform order #${orderId} marked as ${newStatus}`);
       fetchOrders();
     } catch (err) {
-      toast.error('Failed to update status');
+      toast.error(err.message || 'Failed to update status');
     } finally {
       setUpdatingId(null);
     }
@@ -60,9 +60,9 @@ export const AdminOrdersPage = () => {
     filtered = filtered.filter(
       (o) =>
         String(o.id).includes(q) ||
-        o.customerName?.toLowerCase().includes(q) ||
-        o.customerEmail?.toLowerCase().includes(q) ||
-        o.items?.some((i) => i.product?.vendorName?.toLowerCase().includes(q))
+        (o.user?.name || o.customerName || '').toLowerCase().includes(q) ||
+        (o.user?.email || o.customerEmail || '').toLowerCase().includes(q) ||
+        o.items?.some((i) => (i.product?.name || '').toLowerCase().includes(q))
     );
   }
 
@@ -82,23 +82,10 @@ export const AdminOrdersPage = () => {
       accessor: 'customerName',
       render: (row) => (
         <div className="text-xs">
-          <p className="font-bold text-slate-900">{row.customerName || 'Alex Johnson'}</p>
-          <p className="text-[11px] text-slate-400">{row.customerEmail}</p>
+          <p className="font-bold text-slate-900">{row.user?.name || row.customerName || 'Customer'}</p>
+          <p className="text-[11px] text-slate-400">{row.user?.email || row.customerEmail || ''}</p>
         </div>
       ),
-    },
-    {
-      header: 'Participating Vendor',
-      render: (row) => {
-        const vendorNames = Array.from(
-          new Set(row.items?.map((i) => i.product?.vendorName || 'Aura Studio Tech'))
-        ).join(', ');
-        return (
-          <span className="text-xs font-semibold text-indigo-600 truncate max-w-[150px] block">
-            {vendorNames || 'Aura Studio Tech'}
-          </span>
-        );
-      },
     },
     {
       header: 'Total Value',
@@ -138,9 +125,9 @@ export const AdminOrdersPage = () => {
             onChange={(e) => handleStatusChange(row.id, e.target.value)}
             className="w-full text-xs font-semibold py-1 px-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
           >
-            {ORDER_STATUSES.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
+            {[row.status, ...(NEXT_STATUSES[row.status] || [])].map((status) => (
+              <option key={status} value={status}>
+                {status}
               </option>
             ))}
           </select>

@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../api/auth';
-import { mockStorage, INITIAL_USERS } from '../api/mockData';
 import { useToast } from './ToastContext';
 
 const AuthContext = createContext(null);
@@ -11,30 +10,46 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
 
-  // Load session from localStorage or default to sample Customer on initial run
+  // Load session from localStorage and validate with backend
   useEffect(() => {
-    try {
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
+    const initAuth = async () => {
+      try {
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
 
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } else {
-        // Provide seamless first-time onboarding demo account
-        const defaultUser = INITIAL_USERS[0]; // Alex Johnson (Customer)
-        const mockToken = `mock-token-${defaultUser.id}`;
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('user', JSON.stringify(defaultUser));
-        localStorage.setItem('demo_mode', 'true');
-        setToken(mockToken);
-        setUser(defaultUser);
+        // Clean up legacy mock tokens if present
+        if (storedToken && storedToken.startsWith('mock-')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setToken(null);
+          setUser(null);
+          return;
+        }
+
+        if (storedToken) {
+          setToken(storedToken);
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
+          // Verify token validity with backend
+          try {
+            const meRes = await authApi.getMe();
+            if (meRes.user) {
+              setUser(meRes.user);
+              localStorage.setItem('user', JSON.stringify(meRes.user));
+            }
+          } catch (e) {
+            console.warn('Session verification fallback:', e.message);
+          }
+        }
+      } catch (e) {
+        console.error('Error reading auth state', e);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.error('Error reading auth state', e);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    initAuth();
   }, []);
 
   const login = async (email, password) => {
@@ -66,7 +81,7 @@ export const AuthProvider = ({ children }) => {
         setUser(res.user);
         localStorage.setItem('token', res.token);
         localStorage.setItem('user', JSON.stringify(res.user));
-        toast.success(`Account created successfully as ${res.user.role}!`);
+        toast.success(`Account created successfully!`);
         return res.user;
       }
     } catch (err) {
@@ -85,21 +100,6 @@ export const AuthProvider = ({ children }) => {
     toast.info('You have been logged out.');
   };
 
-  // Quick switch role utility for reviewer demonstration
-  const switchRole = useCallback((targetRole) => {
-    const users = mockStorage.getUsers();
-    let target = users.find((u) => u.role === targetRole);
-    if (!target) {
-      target = INITIAL_USERS.find((u) => u.role === targetRole) || INITIAL_USERS[0];
-    }
-    const mockToken = `mock-token-${target.id}-${target.role}`;
-    setToken(mockToken);
-    setUser(target);
-    localStorage.setItem('token', mockToken);
-    localStorage.setItem('user', JSON.stringify(target));
-    toast.success(`Switched role to ${targetRole} (${target.name})`, 'Demo Profile Activated');
-  }, [toast]);
-
   const value = {
     user,
     token,
@@ -108,7 +108,6 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    switchRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

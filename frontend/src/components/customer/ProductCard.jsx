@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { RatingStars } from '../common/RatingStars';
 import { Badge } from '../common/Badge';
 import { useCart } from '../../context/CartContext';
 import { ShoppingBag, Check } from 'lucide-react';
@@ -72,15 +71,6 @@ export const ProductCard = ({ product }) => {
             {product.name}
           </Link>
 
-          {/* Rating */}
-          <div className="mt-2 flex items-center gap-1.5">
-            <RatingStars
-              rating={product.rating || 4.8}
-              size="sm"
-              showScore
-              reviewCount={product.reviewCount || 12}
-            />
-          </div>
         </div>
 
         {/* Price & Quick Add Button */}

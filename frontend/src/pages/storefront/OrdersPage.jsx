@@ -172,13 +172,6 @@ export const OrdersPage = () => {
                   </div>
                 </div>
 
-                {/* Tracking teaser */}
-                {order.trackingNumber && order.trackingNumber !== 'PENDING' && (
-                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
-                    <Truck className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                    <span>Tracking: <strong className="text-slate-900">{order.trackingNumber}</strong> ({order.carrier || 'Carrier'})</span>
-                  </div>
-                )}
               </div>
             );
           })}
