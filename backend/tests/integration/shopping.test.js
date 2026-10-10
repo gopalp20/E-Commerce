@@ -5,6 +5,8 @@ const { execFileSync } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs");
 const sharp = require("sharp");
+const { Writable } = require("node:stream");
+const { v2: cloudinary } = require("cloudinary");
 const mediaDirectory = fs.mkdtempSync(
   path.join(require("node:os").tmpdir(), "forme-gallery-tests-"),
 );
@@ -20,6 +22,10 @@ process.env.DATABASE_URL = testDatabaseUrl(
   process.env.TEST_DATABASE_URL,
 );
 process.env.JWT_SECRET = "forme-test-only-secret";
+// Provider calls are stubbed per test. Never use real Cloudinary credentials here.
+process.env.CLOUDINARY_CLOUD_NAME = "forme-test";
+process.env.CLOUDINARY_API_KEY = "12345";
+process.env.CLOUDINARY_API_SECRET = "test-cloudinary-secret";
 const prisma = require("../../config/prisma");
 const app = require("../../app");
 const jwt = require("jsonwebtoken");
@@ -278,7 +284,29 @@ test("Sold-out products remain discoverable but cannot be added, and published l
   }
 });
 
-test("Photo uploads validate content and size, persist public WebP files and enforce seller ownership", async () => {
+test("Cloudinary photos validate content, persist metadata, redirect publicly and enforce seller ownership", async (t) => {
+  let stored;
+  const cloudUpload = t.mock.method(
+    cloudinary.uploader,
+    "upload_stream",
+    (options, callback) => {
+      const chunks = [];
+      return new Writable({
+        write(chunk, encoding, next) {
+          chunks.push(chunk);
+          next();
+        },
+        final(next) {
+          stored = { data: Buffer.concat(chunks), publicId: options.public_id };
+          callback(null, {
+            public_id: options.public_id,
+            secure_url: `https://res.cloudinary.com/forme-test/image/upload/v1/${options.public_id}.webp`,
+          });
+          next();
+        },
+      });
+    },
+  );
   const png = await sharp({
     create: { width: 2400, height: 1600, channels: 3, background: "#b9b7a7" },
   })
@@ -321,13 +349,21 @@ test("Photo uploads validate content and size, persist public WebP files and enf
   const uploaded = await upload(png, "image/png", vendor.token);
   assert.equal(uploaded.status, 201, JSON.stringify(uploaded));
   assert.equal(uploaded.image.width, 2000);
-  const response = await fetch(base + uploaded.image.url);
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type"), /image\/webp/);
+  assert.equal(cloudUpload.mock.callCount(), 1);
+  assert.equal(fs.readdirSync(mediaDirectory).length, 0);
+  const asset = await prisma.mediaAsset.findUnique({
+    where: { url: uploaded.image.url },
+  });
+  assert.equal(asset.ownerId, vendor.id);
+  assert.equal(asset.cloudinaryPublicId, stored.publicId);
+  assert.equal(asset.bytes, stored.data.length);
+  const response = await fetch(base + uploaded.image.url, {
+    redirect: "manual",
+  });
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.get("location"), asset.cloudinaryUrl);
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
-  const meta = await sharp(
-    Buffer.from(await response.arrayBuffer()),
-  ).metadata();
+  const meta = await sharp(stored.data).metadata();
   assert.equal(meta.format, "webp");
   assert.equal(meta.width, 2000);
   assert.equal(meta.exif, undefined);
@@ -355,12 +391,200 @@ test("Photo uploads validate content and size, persist public WebP files and enf
     },
   });
   assert.equal(denied.status, 403);
+  for (const url of [
+    asset.cloudinaryUrl,
+    asset.cloudinaryUrl.replace("/image/upload/", "/image/upload/w_100/"),
+  ]) {
+    const linked = await request("/products", {
+      token: stranger.token,
+      body: {
+        name: "Wrong CDN owner",
+        description: "Ownership test",
+        price: 10,
+        stock: 1,
+        categoryId: category.id,
+        images: [url],
+      },
+    });
+    assert.equal(linked.status, 403);
+  }
   const editOther = await request(`/products/${p.id}`, {
     token: stranger.token,
     method: "PUT",
     body: { images: [] },
   });
   assert.equal(editOther.status, 403);
+});
+
+test("Cloudinary failures never create local files or database records, and DB failures clean up uploads", async (t) => {
+  const png = await sharp({
+    create: { width: 10, height: 10, channels: 3, background: "#fff" },
+  })
+    .png()
+    .toBuffer();
+  const send = async () => {
+    const response = await fetch(base + "/api/media/images", {
+      method: "POST",
+      headers: {
+        "Content-Type": "image/png",
+        Authorization: `Bearer ${vendor.token}`,
+      },
+      body: png,
+    });
+    return { status: response.status, ...(await response.json()) };
+  };
+  const beforeCount = await prisma.mediaAsset.count({
+    where: { ownerId: vendor.id },
+  });
+  const logs = [];
+  t.mock.method(console, "error", (...args) => logs.push(args.join(" ")));
+  const secret = process.env.CLOUDINARY_API_SECRET;
+  delete process.env.CLOUDINARY_API_SECRET;
+  try {
+    const missing = await send();
+    assert.equal(missing.status, 503);
+    assert.match(missing.message, /connect Cloudinary/);
+  } finally {
+    process.env.CLOUDINARY_API_SECRET = secret;
+  }
+  const failing = t.mock.method(
+    cloudinary.uploader,
+    "upload_stream",
+    (_, callback) =>
+      new Writable({
+        write(chunk, encoding, next) {
+          next();
+          callback(new Error("test-cloudinary-secret"));
+        },
+      }),
+  );
+  const failed = await send();
+  assert.equal(failed.status, 502);
+  assert.match(failed.message, /try again/);
+  failing.mock.restore();
+  let publicId;
+  t.mock.method(
+    cloudinary.uploader,
+    "upload_stream",
+    (options, callback) =>
+      new Writable({
+        write(chunk, encoding, next) {
+          publicId = options.public_id;
+          next();
+          callback(null, {
+            public_id: publicId,
+            secure_url: `https://res.cloudinary.com/forme-test/image/upload/v1/${publicId}.webp`,
+          });
+        },
+      }),
+  );
+  const destroyed = [];
+  t.mock.method(cloudinary.uploader, "destroy", async (id) => {
+    destroyed.push(id);
+    return { result: "ok" };
+  });
+  let failCreate = true;
+  prisma.$use(async (params, next) => {
+    if (
+      failCreate &&
+      params.model === "MediaAsset" &&
+      params.action === "create"
+    )
+      throw new Error("Simulated database failure");
+    return next(params);
+  });
+  try {
+    assert.equal((await send()).status, 500);
+  } finally {
+    failCreate = false;
+  }
+  assert.deepEqual(destroyed, [publicId]);
+  assert.equal(
+    await prisma.mediaAsset.count({ where: { ownerId: vendor.id } }),
+    beforeCount,
+  );
+  assert.equal(fs.readdirSync(mediaDirectory).length, 0);
+  assert.doesNotMatch(logs.join(" "), /test-cloudinary-secret/);
+});
+
+test("Legacy local photos still load, while missing and unsafe image references return 404", async () => {
+  const id = randomUUID(),
+    filename = `${id}.webp`,
+    url = `/api/media/images/${filename}`;
+  const data = await sharp({
+    create: { width: 12, height: 8, channels: 3, background: "#fff" },
+  })
+    .webp()
+    .toBuffer();
+  fs.writeFileSync(path.join(mediaDirectory, filename), data);
+  await prisma.mediaAsset.create({
+    data: { id, url, ownerId: vendor.id, bytes: data.length },
+  });
+  const response = await fetch(base + url);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /image\/webp/);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), data);
+  assert.equal(
+    (await fetch(base + `/api/media/images/${randomUUID()}.webp`)).status,
+    404,
+  );
+  await prisma.mediaAsset.update({
+    where: { id },
+    data: { cloudinaryUrl: "https://attacker.test/image.webp" },
+  });
+  assert.equal((await fetch(base + url, { redirect: "manual" })).status, 404);
+  fs.unlinkSync(path.join(mediaDirectory, filename));
+});
+
+test("Migrating a legacy upload keeps product URLs unchanged and replaces local delivery with Cloudinary", async (t) => {
+  const { migrateLocalImage } = require("../../services/migrateLocalMedia");
+  const id = randomUUID(),
+    filename = `${id}.webp`,
+    url = `/api/media/images/${filename}`;
+  const data = await sharp({
+    create: { width: 12, height: 8, channels: 3, background: "#fff" },
+  })
+    .webp()
+    .toBuffer();
+  fs.writeFileSync(path.join(mediaDirectory, filename), data);
+  const asset = await prisma.mediaAsset.create({
+    data: { id, url, ownerId: vendor.id, bytes: data.length },
+  });
+  const p = await product();
+  await request(`/products/${p.id}`, {
+    method: "PUT",
+    token: vendor.token,
+    body: { images: [{ url, alt: "Original cover" }] },
+  });
+  let calls = 0;
+  t.mock.method(
+    cloudinary.uploader,
+    "upload_stream",
+    (options, callback) =>
+      new Writable({
+        write(chunk, encoding, next) {
+          calls++;
+          assert.deepEqual(chunk, data);
+          next();
+          callback(null, {
+            public_id: options.public_id,
+            secure_url: `https://res.cloudinary.com/forme-test/image/upload/v1/${options.public_id}.webp`,
+          });
+        },
+      }),
+  );
+  const options = { prisma, directory: mediaDirectory };
+  assert.equal(await migrateLocalImage(asset, options), "migrated");
+  const migrated = await prisma.mediaAsset.findUnique({ where: { id } });
+  assert.equal(await migrateLocalImage(migrated, options), "already-cloud");
+  assert.equal(calls, 1);
+  assert.equal(migrated.url, url);
+  assert.equal((await request(`/products/${p.id}`)).product.images[0].url, url);
+  const response = await fetch(base + url, { redirect: "manual" });
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.get("location"), migrated.cloudinaryUrl);
+  assert.deepEqual(fs.readFileSync(path.join(mediaDirectory, filename)), data);
+  fs.unlinkSync(path.join(mediaDirectory, filename));
 });
 
 test("Sellers can find and restore their archived listings as private drafts without losing details", async () => {

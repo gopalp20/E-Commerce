@@ -13,6 +13,7 @@
     "db:setup": "node scripts/database.mjs setup",
     "db:migrate": "node scripts/database.mjs migrate",
     "db:seed": "node scripts/database.mjs seed",
+    "media:migrate": "node backend/scripts/migrate-media.js",
     "test:unit": "node --test scripts/*.test.mjs && npm test --prefix backend && npm test --prefix frontend",
     "test:integration": "npm run test:integration --prefix backend"
   },

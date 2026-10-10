@@ -34,18 +34,35 @@ async function validateGallery(images, ownerIds) {
     throw new AppError("A product can have up to 10 photos.", 400);
   if (new Set(images.map((image) => image.url)).size !== images.length)
     throw new AppError("Each product photo must be different.", 400);
-  const uploads = images.filter((image) =>
-    image.url.startsWith("/api/media/images/"),
-  );
-  if (!uploads.length) return;
-  const count = await prisma.mediaAsset.count({
+  const urls = images.map((image) => image.url);
+  if (!urls.length) return;
+  const assets = await prisma.mediaAsset.findMany({
     where: {
-      url: { in: uploads.map((image) => image.url) },
-      ownerId: { in: ownerIds },
+      OR: [{ url: { in: urls } }, { cloudinaryUrl: { in: urls } }],
     },
+    select: { url: true, cloudinaryUrl: true, ownerId: true },
   });
-  if (count !== uploads.length)
-    throw new AppError("Use photos uploaded by your own store.", 403);
+  for (const url of urls) {
+    const asset = assets.find(
+      (asset) => asset.url === url || asset.cloudinaryUrl === url,
+    );
+    // The stable app URL and its CDN URL share the same ownership boundary.
+    // Do not allow transformed or invented CDN links to bypass this check.
+    let managedCloudImage = false;
+    try {
+      const parsed = new URL(url);
+      managedCloudImage =
+        parsed.hostname === "res.cloudinary.com" &&
+        decodeURIComponent(parsed.pathname).includes("/forme/products/");
+    } catch {
+      /* Local image reference. */
+    }
+    if (
+      (asset && !ownerIds.includes(asset.ownerId)) ||
+      (!asset && (url.startsWith("/api/media/images/") || managedCloudImage))
+    )
+      throw new AppError("Use photos uploaded by your own store.", 403);
+  }
 }
 
 module.exports = { galleryFromInput, validateGallery, imageOrder };

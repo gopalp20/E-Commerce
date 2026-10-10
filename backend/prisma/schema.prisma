@@ -106,6 +106,8 @@ model MediaAsset {
   url       String @unique
   ownerId   Int
   bytes     Int
+  cloudinaryPublicId String? @unique
+  cloudinaryUrl String?
   createdAt DateTime @default(now())
   owner     User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 

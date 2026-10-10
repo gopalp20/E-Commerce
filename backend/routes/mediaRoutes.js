@@ -1,6 +1,5 @@
 const express = require("express");
 const path = require("node:path");
-const fs = require("node:fs/promises");
 const { randomUUID } = require("node:crypto");
 const sharp = require("sharp");
 const prisma = require("../config/prisma");
@@ -8,6 +7,7 @@ const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
 const asyncHandler = require("../utils/asyncHandler");
 const AppError = require("../utils/AppError");
+const storage = require("../services/cloudinaryStorage");
 const router = express.Router();
 const directory = path.resolve(
   process.env.MEDIA_DIRECTORY ||
@@ -64,33 +64,51 @@ router.post(
     const id = randomUUID(),
       filename = `${id}.webp`,
       url = `/api/media/images/${filename}`;
-    await fs.mkdir(directory, { recursive: true });
-    await fs.writeFile(path.join(directory, filename), data, { flag: "wx" });
+    const cloud = await storage.uploadProductImage(data, {
+      id,
+      ownerId: req.user.id,
+    });
     try {
       await prisma.mediaAsset.create({
-        data: { id, url, ownerId: req.user.id, bytes: data.length },
+        data: { id, url, ownerId: req.user.id, bytes: data.length, ...cloud },
       });
     } catch (error) {
-      await fs.unlink(path.join(directory, filename));
+      await storage.removeProductImage(cloud.cloudinaryPublicId);
       throw error;
     }
-    res
-      .status(201)
-      .json({
-        success: true,
-        image: { url, width: info.width, height: info.height },
-      });
+    res.status(201).json({
+      success: true,
+      image: { url, width: info.width, height: info.height },
+    });
   }),
 );
-router.get("/images/:filename", (req, res, next) => {
-  if (!/^[a-f0-9-]{36}\.webp$/.test(req.params.filename))
-    return next(new AppError("Photo not found", 404));
-  res.set({
-    "X-Content-Type-Options": "nosniff",
-    "Cache-Control": "public, max-age=31536000, immutable",
-  });
-  res.sendFile(req.params.filename, { root: directory }, (error) => {
-    if (error) next(new AppError("Photo not found", 404));
-  });
-});
+router.get(
+  "/images/:filename",
+  asyncHandler(async (req, res, next) => {
+    if (!/^[a-f0-9-]{36}\.webp$/.test(req.params.filename))
+      return next(new AppError("Photo not found", 404));
+    const asset = await prisma.mediaAsset.findUnique({
+      where: { url: `/api/media/images/${req.params.filename}` },
+      select: { cloudinaryUrl: true },
+    });
+    if (!asset) return next(new AppError("Photo not found", 404));
+    if (asset.cloudinaryUrl) {
+      if (!storage.isCloudinaryImageUrl(asset.cloudinaryUrl))
+        return next(new AppError("Photo not found", 404));
+      res.set({
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "public, max-age=86400",
+      });
+      return res.redirect(302, asset.cloudinaryUrl);
+    }
+    // Old uploads remain readable from their existing persistent directory.
+    res.set({
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    });
+    res.sendFile(req.params.filename, { root: directory }, (error) => {
+      if (error) next(new AppError("Photo not found", 404));
+    });
+  }),
+);
 module.exports = router;

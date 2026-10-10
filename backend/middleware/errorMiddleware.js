@@ -32,7 +32,10 @@ const globalErrorHandler = (error, req, res, next) => {
 
   res.status(statusCode).json({
     success: false,
-    message: statusCode >= 500 ? "Internal Server Error" : message,
+    message:
+      statusCode >= 500 && error.expose !== true
+        ? "Internal Server Error"
+        : message,
     ...(error.details && { details: error.details }),
   });
 };
