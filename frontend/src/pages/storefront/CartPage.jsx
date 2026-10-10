@@ -1,228 +1,200 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
-import { Button } from '../../components/common/Button';
-import { EmptyState } from '../../components/common/EmptyState';
-import {
-  ShoppingBag,
-  Trash2,
-  Minus,
-  Plus,
-  ArrowRight,
-  ShieldCheck,
-  Truck,
-} from 'lucide-react';
-
+import { useSaved } from "../../context/SavedContext";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, ArrowLeft } from "lucide-react";
+import { useCart } from "../../context/CartContext";
+import { PageState, Quantity, Drawer } from "../../components/forme/UI";
+import { OrderSummary } from "../../components/forme/OrderSummary";
+import { money, productImage } from "../../lib/format";
 export const CartPage = () => {
-  const { items, subtotal, shipping, tax, total, updateQuantity, removeFromCart, clearCart } = useCart();
-  const navigate = useNavigate();
-
-  if (items.length === 0) {
+  const {
+    items,
+    itemCount,
+    subtotal,
+    isLoading,
+    error,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+  } = useCart();
+  const { saveFromBag, items: savedItems, busy: saving } = useSaved();
+  const [busy, setBusy] = useState(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const change = async (id, action) => {
+    setBusy(id);
+    try {
+      await action();
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (isLoading) return <PageState loading />;
+  if (error)
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
-        <EmptyState
-          icon={ShoppingBag}
-          title="Your shopping bag is empty"
-          description="Explore our curated catalog of precision audio, peripherals, and technical apparel to find something extraordinary."
-          actionText="Explore Marketplace Catalog"
-          onAction={() => navigate('/products')}
-        />
-      </div>
+      <PageState
+        title="Your bag needs a moment."
+        description={error}
+        retry={() => window.location.reload()}
+      ></PageState>
     );
-  }
-
-  const freeShippingThreshold = 150;
-  const progressToFreeShipping = Math.min(100, (subtotal / freeShippingThreshold) * 100);
-  const remainingForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
-
+  if (!items.length)
+    return (
+      <PageState
+        title="Good things belong here."
+        description="Your bag is empty. Find something that makes your everyday a little better."
+      >
+        <Link className="store-button" to="/shop">
+          Continue shopping
+          <ArrowRight size={17} />
+        </Link>
+        {savedItems.length > 0 && (
+          <Link className="arrow-link" to="/saved">
+            View saved items ({savedItems.length})<ArrowRight size={17} />
+          </Link>
+        )}
+      </PageState>
+    );
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <div className="flex items-center justify-between pb-6 border-b border-slate-200">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Shopping Bag
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Review items from independent creator studios before checkout
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={clearCart}
-          className="text-xs text-rose-600 hover:text-rose-800 font-semibold transition-colors"
-        >
-          Clear Cart
-        </button>
+    <div className="wrap">
+      <div className="breadcrumbs">
+        <Link to="/shop">Your shop</Link>
+        <span>/</span>
+        <span>Your bag</span>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mt-8 items-start">
-        {/* Cart Items List */}
-        <div className="lg:col-span-8 space-y-4">
-          {/* Free Shipping Progress Indicator */}
-          <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-xs text-indigo-900">
-            <div className="flex items-center justify-between font-semibold mb-2">
-              <span className="flex items-center gap-1.5">
-                <Truck className="w-4 h-4 text-indigo-600" />
-                {remainingForFreeShipping > 0
-                  ? `Add $${remainingForFreeShipping.toFixed(2)} more to unlock Free Express Shipping!`
-                  : '🎉 You have unlocked Free Insured Express Shipping!'}
-              </span>
-              <span className="text-[11px] font-bold">{Math.round(progressToFreeShipping)}%</span>
-            </div>
-            <div className="h-1.5 w-full bg-indigo-200/60 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-indigo-600 rounded-full transition-all duration-300"
-                style={{ width: `${progressToFreeShipping}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-subtle divide-y divide-slate-100 overflow-hidden">
-            {items.map((item) => {
-              const product = item.product || {};
-              const unitPrice = Number(product.price) || 0;
-              const lineTotal = unitPrice * item.quantity;
-
-              return (
-                <div
-                  key={item.id}
-                  className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 hover:bg-slate-50/50 transition-colors"
+      <header className="page-heading">
+        <p className="eyebrow">A FEW GOOD CHOICES</p>
+        <h1>
+          Your bag.
+          <span style={{ color: "var(--muted)", fontSize: 22, marginLeft: 14 }}>
+            ({itemCount})
+          </span>
+        </h1>
+        <p>Thoughtful additions to your everyday.</p>
+      </header>
+      <div className="bag-layout">
+        <div>
+          <div className="bag-items">
+            {items.map((item) => (
+              <article
+                className="bag-item"
+                key={item.id}
+                aria-busy={busy === item.id}
+              >
+                <Link
+                  className="bag-item-image"
+                  to={`/products/${item.productId}`}
                 >
-                  {/* Thumbnail */}
-                  <Link
-                    to={`/products/${product.id}`}
-                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0"
-                  >
-                    <img
-                      src={product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </Link>
-
-                  {/* Title & Vendor */}
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
-                      {product.vendor?.name || 'Verified Vendor'}
-                    </span>
-                    <Link
-                      to={`/products/${product.id}`}
-                      className="block font-bold text-sm text-slate-900 hover:text-indigo-600 transition-colors mt-0.5 truncate"
-                    >
-                      {product.name}
+                  <img
+                    src={productImage(item.product)}
+                    alt={item.product.name}
+                  />
+                </Link>
+                <div className="bag-item-info">
+                  <h2>
+                    <Link to={`/products/${item.productId}`}>
+                      {item.product.name}
                     </Link>
-                    <span className="text-xs text-slate-500 block mt-1">
-                      ${unitPrice.toFixed(2)} each
-                    </span>
-                  </div>
-
-                  {/* Quantity Controls */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                        disabled={item.quantity <= 1}
-                        className="w-6 h-6 rounded-lg bg-white shadow-xs flex items-center justify-center text-slate-600 hover:text-slate-900 disabled:opacity-30"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="w-8 text-center font-bold text-xs text-slate-900">
-                        {item.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="w-6 h-6 rounded-lg bg-white shadow-xs flex items-center justify-center text-slate-600 hover:text-slate-900"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    {/* Line Total */}
-                    <div className="w-20 text-right">
-                      <span className="font-extrabold text-sm text-slate-900">
-                        ${lineTotal.toFixed(2)}
-                      </span>
-                    </div>
-
-                    {/* Remove Action */}
+                  </h2>
+                  <p>{money(item.product.price)} each</p>
+                  {(item.product.status !== "ACTIVE" ||
+                    item.quantity > item.product.stock) && (
+                    <p className="field-error">
+                      Availability changed. Update or remove this item.
+                    </p>
+                  )}
+                  <div className="bag-item-controls">
+                    <Quantity
+                      value={item.quantity}
+                      onChange={(q) =>
+                        change(item.id, () => updateQuantity(item.id, q))
+                      }
+                      max={item.product.stock}
+                      disabled={busy !== null || saving}
+                      name={`${item.product.name} quantity`}
+                    />
                     <button
-                      type="button"
-                      onClick={() => removeFromCart(item.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Remove item"
+                      className="remove-button"
+                      disabled={busy !== null || saving}
+                      onClick={() => change(item.id, () => saveFromBag(item))}
+                      aria-label={`Save ${item.product.name} for later`}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      Save for later
+                    </button>
+                    <button
+                      className="remove-button"
+                      aria-label={`Remove ${item.product.name} from your bag`}
+                      disabled={busy !== null || saving}
+                      onClick={() =>
+                        change(item.id, () => removeFromCart(item.id))
+                      }
+                    >
+                      Remove
                     </button>
                   </div>
                 </div>
-              );
-            })}
+                <p className="bag-item-total">
+                  {money(Number(item.product.price) * item.quantity)}
+                </p>
+              </article>
+            ))}
           </div>
-
-          <div className="pt-2">
-            <Link
-              to="/products"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-            >
-              ← Continue browsing products
+          <div className="bag-bottom">
+            <Link className="arrow-link" to="/shop">
+              <ArrowLeft size={15} />
+              Continue exploring
             </Link>
+            <button
+              className="remove-button"
+              disabled={busy !== null || saving}
+              onClick={() => setConfirmClear(true)}
+            >
+              Clear bag
+            </button>
           </div>
+          <p className="bag-reservation-note">
+            Items are reserved when you place your order.
+          </p>
         </div>
-
-        {/* Order Summary Card */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 p-6 shadow-subtle space-y-5 sticky top-24">
-          <h3 className="text-base font-bold text-slate-900 pb-3 border-b border-slate-100">
-            Order Summary
-          </h3>
-
-          <div className="space-y-3 text-xs">
-            <div className="flex justify-between text-slate-600">
-              <span>Items Subtotal</span>
-              <span className="font-bold text-slate-900">${subtotal.toFixed(2)}</span>
-            </div>
-
-            <div className="flex justify-between text-slate-600">
-              <span>Shipping</span>
-              <span className="font-bold text-slate-900">
-                {shipping === 0 ? (
-                  <span className="text-emerald-600 uppercase font-extrabold">Free</span>
-                ) : (
-                  `$${shipping.toFixed(2)}`
-                )}
-              </span>
-            </div>
-
-            <div className="flex justify-between text-slate-600">
-              <span>Tax</span>
-              <span className="font-bold text-slate-900">${tax.toFixed(2)}</span>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline">
-              <span className="text-sm font-bold text-slate-900">Grand Total</span>
-              <span className="text-2xl font-black text-slate-900 tracking-tight">
-                ${total.toFixed(2)}
-              </span>
-            </div>
-          </div>
-
-          <Button
-            size="lg"
-            variant="primary"
-            rightIcon={ArrowRight}
-            onClick={() => navigate('/checkout')}
-            className="w-full"
-          >
-            Proceed to Checkout
-          </Button>
-
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-center gap-2 text-[11px] text-slate-500 text-center">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>Order stock availability is checked when you place the order.</span>
-          </div>
-        </div>
+        <OrderSummary subtotal={subtotal}>
+          <Link className="store-button full" to="/checkout">
+            Continue to checkout
+            <ArrowRight size={17} />
+          </Link>
+        </OrderSummary>
       </div>
+      <div className="bag-saved-link">
+        <Link className="arrow-link" to="/saved">
+          Saved for later{savedItems.length ? ` (${savedItems.length})` : ""}
+          <ArrowRight size={17} />
+        </Link>
+      </div>
+      <Drawer
+        open={confirmClear}
+        onClose={() => busy === null && setConfirmClear(false)}
+        title="Clear your bag?"
+      >
+        <p>Remove all {itemCount} items from your bag?</p>
+        <div className="clear-bag-actions">
+          <button
+            className="store-button secondary"
+            disabled={busy !== null || saving}
+            onClick={() => setConfirmClear(false)}
+          >
+            Keep shopping
+          </button>
+          <button
+            className="store-button"
+            disabled={busy !== null || saving}
+            onClick={() =>
+              change("clear", async () => {
+                if (await clearCart()) setConfirmClear(false);
+              })
+            }
+          >
+            {busy === "clear" ? "Clearing…" : "Clear bag"}
+          </button>
+        </div>
+      </Drawer>
     </div>
   );
 };

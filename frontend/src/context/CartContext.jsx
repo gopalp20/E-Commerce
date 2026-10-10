@@ -1,128 +1,133 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { cartApi } from '../api/cart';
-import { useToast } from './ToastContext';
-import { useAuth } from './AuthContext';
-
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { cartApi } from "../api/cart";
+import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 const CartContext = createContext(null);
-
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState({ items: [] });
-  const [isLoading, setIsLoading] = useState(true);
-  const toast = useToast();
-  const { user } = useAuth();
-
-  const loadCart = async () => {
-    try {
-      setIsLoading(true);
-      const res = await cartApi.getCart();
-      if (res.cart) {
-        setCart(res.cart);
-      }
-    } catch (e) {
-      console.error('Failed to load cart', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    let active = true;
-    const hydrateCart = async () => {
-      if (user?.role === 'CUSTOMER') {
-        try {
-          await cartApi.syncGuestCart();
-        } catch (error) {
-          toast.error(error.message || 'Some saved cart items could not be synced.');
-        }
-      }
-      if (active) await loadCart();
-    };
-    hydrateCart();
-    return () => { active = false; };
-  }, [user?.id, user?.role]);
-
-  const addToCart = async (product, quantity = 1) => {
-    if (user && user.role !== 'CUSTOMER') {
-      toast.error('Only customer accounts can add items to a cart.');
+  const { user, isLoading: authLoading } = useAuth(),
+    toast = useToast(),
+    navigate = useNavigate(),
+    location = useLocation();
+  const [cart, setCart] = useState({ items: [] }),
+    [isLoading, setLoading] = useState(true),
+    [error, setError] = useState("");
+  const version = useRef(0);
+  const customerId = user?.role === "CUSTOMER" ? user.id : null;
+  const refreshCart = useCallback(async () => {
+    const request = ++version.current;
+    if (!customerId) {
+      setCart({ items: [] });
       return;
     }
+    const result = await cartApi.getCart();
+    if (request === version.current) {
+      setCart({ ...result.cart, ownerId: customerId });
+      setError("");
+    }
+  }, [customerId]);
+  useEffect(() => {
+    if (authLoading) return;
+    let active = true;
+    setCart({ items: [] });
+    setError("");
+    setLoading(true);
+    refreshCart()
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+      version.current++;
+    };
+  }, [refreshCart, authLoading]);
+  useEffect(() => {
+    const changed = () => refreshCart().catch((e) => setError(e.message));
+    window.addEventListener("forme:cart-changed", changed);
+    return () => window.removeEventListener("forme:cart-changed", changed);
+  }, [refreshCart]);
+  const mutate = async (action, message) => {
+    const request = ++version.current;
     try {
-      const res = await cartApi.addToCart(product.id, quantity, product);
-      if (res.cart) {
-        setCart(res.cart);
-      }
-      toast.success(`Added ${product.name} (x${quantity}) to your bag.`, 'Cart Updated');
-    } catch (err) {
-      toast.error(err.message || 'Could not add item to cart.');
+      const result = await action();
+      if (request !== version.current) return false;
+      setCart({ ...result.cart, ownerId: customerId });
+      setError("");
+      if (message) toast.success(message, "Added to your bag");
+      return true;
+    } catch (e) {
+      if (request === version.current) toast.error(e.message);
+      return false;
     }
   };
-
-  const updateQuantity = async (itemId, quantity) => {
-    try {
-      const res = await cartApi.updateCartItem(itemId, quantity);
-      if (res.cart) {
-        setCart(res.cart);
-      }
-    } catch (err) {
-      toast.error(err.message || 'Could not update cart quantity.');
-    }
-  };
-
-  const removeFromCart = async (itemId) => {
-    try {
-      const res = await cartApi.removeCartItem(itemId);
-      if (res.cart) {
-        setCart(res.cart);
-      }
-      toast.info('Item removed from cart.');
-    } catch (err) {
-      toast.error(err.message || 'Could not remove item.');
-    }
-  };
-
-  const clearCart = async () => {
-    try {
-      const res = await cartApi.clearCart();
-      if (res.cart) {
-        setCart(res.cart);
-      }
-    } catch (err) {
-      toast.error(err.message || 'Could not clear cart.');
-    }
-  };
-
-  const itemCount = (cart.items || []).reduce((acc, item) => acc + (item.quantity || 1), 0);
-  const subtotal = (cart.items || []).reduce(
-    (acc, item) => acc + (Number(item.product?.price) || 0) * (item.quantity || 1),
-    0
+  // Never render one customer's count while the next customer's request loads.
+  const visibleCart =
+    customerId && cart.ownerId === customerId ? cart : { items: [] };
+  const items = visibleCart.items || [];
+  const subtotal =
+    items.reduce(
+      (sum, item) =>
+        sum +
+        Math.round(Number(item.product?.price || 0) * 100) * item.quantity,
+      0,
+    ) / 100;
+  return (
+    <CartContext.Provider
+      value={{
+        cart: visibleCart,
+        items,
+        subtotal,
+        total: subtotal,
+        itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+        isLoading,
+        error,
+        refreshCart,
+        addToCart: (product, quantity = 1) => {
+          if (authLoading) return Promise.resolve(false);
+          if (!user) {
+            navigate("/login", {
+              state: {
+                reason: "add-to-bag",
+                pendingAdd: {
+                  productId: product.id,
+                  quantity,
+                  name: product.name,
+                  imageUrl: product.imageUrl,
+                },
+                from: { pathname: location.pathname, search: location.search },
+              },
+            });
+            return Promise.resolve(false);
+          }
+          if (!customerId) {
+            toast.info(
+              "Switch to a customer account to shop. Your store account manages products and orders.",
+            );
+            return Promise.resolve(false);
+          }
+          return mutate(
+            () => cartApi.addToCart(product.id, quantity),
+            product.name,
+          );
+        },
+        updateQuantity: (id, quantity) =>
+          mutate(() => cartApi.updateCartItem(id, quantity)),
+        removeFromCart: (id) => mutate(() => cartApi.removeCartItem(id)),
+        clearCart: () => mutate(() => cartApi.clearCart()),
+      }}
+    >
+      {children}
+    </CartContext.Provider>
   );
-  // The backend currently prices orders as the sum of their cart items.
-  const shipping = 0;
-  const tax = 0;
-  const total = subtotal;
-
-  const value = {
-    cart,
-    items: cart.items || [],
-    itemCount,
-    subtotal,
-    shipping,
-    tax,
-    total,
-    isLoading,
-    addToCart,
-    updateQuantity,
-    removeFromCart,
-    clearCart,
-  };
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
-
-export const useCart = () => {
-  const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
-};
+export const useCart = () => useContext(CartContext);

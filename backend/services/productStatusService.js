@@ -1,4 +1,7 @@
 const resolveProductStatus = ({ currentStatus, stock, requestedStatus }) => {
+  const visibility = requestedStatus || currentStatus;
+  if (visibility === "DRAFT" || visibility === "ARCHIVED")
+    return requestedStatus;
   if (stock === 0) return "OUT_OF_STOCK";
 
   // Restoring stock makes an out-of-stock listing purchasable again. Archived

@@ -1,291 +1,245 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { productsApi } from '../../api/products';
-import { useCart } from '../../context/CartContext';
-import { Badge } from '../../components/common/Badge';
-import { Button } from '../../components/common/Button';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import {
-  ShoppingBag,
-  Zap,
-  Store,
-  CheckCircle2,
-  Truck,
-  RotateCcw,
-  ShieldCheck,
-  ChevronRight,
-  Minus,
-  Plus,
-} from 'lucide-react';
-
+import { SaveButton } from "../../components/forme/SaveButton";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { ArrowRight, Check, ShoppingBag, Truck, Loader2 } from "lucide-react";
+import { productsApi } from "../../api/products";
+import { useCart } from "../../context/CartContext";
+import { money } from "../../lib/format";
+import { PageState, Quantity } from "../../components/forme/UI";
+import { ProductGallery } from "../../components/forme/ProductGallery";
+import { roleHome } from "../../lib/authNavigation";
+import { useAuth } from "../../context/AuthContext";
+import { ProductCard } from "../../components/customer/ProductCard";
+import { ProductReviews, Stars } from "../../components/forme/Reviews";
 export const ProductDetailPage = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const { addToCart } = useCart();
-
   const [product, setProduct] = useState(null);
-  const [selectedImage, setSelectedImage] = useState('');
+  const [related, setRelated] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
-
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const { addToCart, cart } = useCart();
+  const { user } = useAuth();
+  const updateRating = useCallback(
+    (summary) =>
+      setProduct((p) => ({
+        ...p,
+        ratingAverage: summary.average,
+        reviewCount: summary.count,
+      })),
+    [],
+  );
   useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        setIsLoading(true);
-        const res = await productsApi.getProductById(id);
-        if (res.product) {
-          setProduct(res.product);
-          setSelectedImage(res.product.imageUrl || res.product.images?.[0]?.url || '');
-        }
-      } catch (err) {
-        console.error('Failed to load product', err);
-      } finally {
-        setIsLoading(false);
-      }
+    let active = true;
+    setLoading(true);
+    setError("");
+    setQuantity(1);
+    setAdded(false);
+    productsApi
+      .getProductById(id)
+      .then((r) => {
+        if (!active) return;
+        setProduct(r.product);
+        return productsApi
+          .getProducts({ category: r.product.category.slug, limit: 5 })
+          .catch(() => ({ products: [] }));
+      })
+      .then((r) => {
+        if (active && r)
+          setRelated(r.products.filter((p) => p.id !== Number(id)).slice(0, 4));
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
     };
-
-    fetchProduct();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [id]);
-
-  if (isLoading) {
+  }, [id, retry]);
+  if (loading) return <PageState loading />;
+  if (error || !product)
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3">
-        <LoadingSpinner size="lg" />
-        <p className="text-xs font-semibold text-slate-500">Loading product details...</p>
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <h2 className="text-2xl font-bold text-slate-800">Product Not Found</h2>
-        <p className="text-sm text-slate-500 mt-2">The item you are looking for does not exist or has been retired.</p>
-        <Link to="/products" className="mt-4 inline-block text-indigo-600 font-semibold hover:underline text-sm">
-          Return to Catalog
+      <PageState
+        title="This object is out of reach."
+        description={error}
+        retry={() => setRetry((x) => x + 1)}
+      >
+        <Link className="arrow-link" to="/products">
+          Back to the collection
+          <ArrowRight size={16} />
         </Link>
-      </div>
+      </PageState>
     );
-  }
-
-  const fallbackUrl = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
-  const isOutOfStock = product.stock <= 0 || product.status === 'OUT_OF_STOCK';
-  const allImages = product.images && product.images.length > 0
-    ? product.images
-    : [{ id: 1, url: product.imageUrl || fallbackUrl }];
-
-  const handleAddToCart = async () => {
-    if (!isOutOfStock) {
-      setIsAdding(true);
-      await addToCart(product, quantity);
-      setIsAdding(false);
-    }
+  const unavailable = product.stock < 1 || product.status !== "ACTIVE";
+  const inBag =
+    cart?.items?.find((item) => item.productId === product.id)?.quantity || 0;
+  const remaining = Math.max(0, product.stock - inBag);
+  const selectedQuantity = Math.max(1, Math.min(quantity, remaining));
+  const add = async () => {
+    setAdding(true);
+    const ok = await addToCart(product, selectedQuantity);
+    setAdding(false);
+    setAdded(ok);
   };
-
-  const handleBuyNow = async () => {
-    if (!isOutOfStock) {
-      await addToCart(product, quantity);
-      navigate('/checkout');
-    }
-  };
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-slate-500 mb-6 overflow-x-auto">
-        <Link to="/" className="hover:text-slate-900 transition-colors">Home</Link>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-        <Link to="/products" className="hover:text-slate-900 transition-colors">Products</Link>
-        {product.category && (
-          <>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <Link
-              to={`/products?category=${product.category.slug}`}
-              className="hover:text-slate-900 transition-colors capitalize"
-            >
-              {product.category.name}
-            </Link>
-          </>
-        )}
-        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-        <span className="text-slate-800 font-medium truncate max-w-xs">{product.name}</span>
-      </nav>
-
-      {/* Main Grid: Gallery & Product Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
-        {/* Left Column: Image Gallery */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="relative aspect-square w-full rounded-3xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
-            <img
-              src={selectedImage || product.imageUrl}
-              alt={product.name}
-              className="w-full h-full object-cover object-center"
-            />
-            {isOutOfStock && (
-              <div className="absolute top-4 left-4">
-                <Badge status="OUT_OF_STOCK" size="md">Sold Out</Badge>
-              </div>
-            )}
-          </div>
-
-          {/* Thumbnails */}
-          {allImages.length > 1 && (
-            <div className="flex items-center gap-3 overflow-x-auto pb-2">
-              {allImages.map((img) => (
-                <button
-                  key={img.id}
-                  type="button"
-                  onClick={() => setSelectedImage(img.url)}
-                  className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
-                    selectedImage === img.url
-                      ? 'border-indigo-600 ring-2 ring-indigo-100'
-                      : 'border-slate-200 opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img src={img.url} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Details & Actions */}
-        <div className="lg:col-span-5 space-y-6">
-          {/* Vendor Tag */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">Sold by</span>
-              <span className="inline-flex items-center gap-1 font-bold text-xs text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
-                <Store className="w-3.5 h-3.5" />
-                {product.vendor?.name || 'Marketplace vendor'}
-              </span>
-            </div>
-
-            {isOutOfStock ? (
-              <Badge status="OUT_OF_STOCK">Unavailable</Badge>
-            ) : product.stock <= 5 ? (
-              <Badge variant="WARNING">Only {product.stock} left in stock</Badge>
-            ) : (
-              <Badge status="ACTIVE" showDot>In Stock ({product.stock} units)</Badge>
-            )}
-          </div>
-
-          {/* Title & Price */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
-              {product.name}
-            </h1>
-            <div className="mt-4 flex items-baseline gap-3">
-              <span className="text-3xl font-black text-slate-900 tracking-tight">
-                ${Number(product.price).toFixed(2)}
-              </span>
-              <span className="text-xs text-slate-500 font-medium">USD • Import duties included</span>
-            </div>
-          </div>
-
-          {/* Description */}
-          <p className="text-sm text-slate-600 leading-relaxed font-normal">
-            {product.description}
-          </p>
-
-          {/* Key Features Bullet Points */}
-          {product.features && product.features.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                Specifications & Highlights
-              </h4>
-              <ul className="grid grid-cols-1 gap-2 text-xs text-slate-600">
-                {product.features.map((feat, idx) => (
-                  <li key={idx} className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Quantity Controls & Add to Cart */}
-          <div className="pt-4 border-t border-slate-100 space-y-4">
-            {!isOutOfStock && (
-              <div className="flex items-center gap-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Quantity
-                </span>
-                <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    disabled={quantity <= 1}
-                    className="w-7 h-7 rounded-lg bg-white shadow-xs flex items-center justify-center text-slate-600 hover:text-slate-900 disabled:opacity-40"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-10 text-center font-bold text-xs text-slate-900">
-                    {quantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-                    disabled={quantity >= product.stock}
-                    className="w-7 h-7 rounded-lg bg-white shadow-xs flex items-center justify-center text-slate-600 hover:text-slate-900 disabled:opacity-40"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Button
-                variant="primary"
-                size="lg"
-                leftIcon={ShoppingBag}
-                disabled={isOutOfStock}
-                isLoading={isAdding}
-                onClick={handleAddToCart}
-                className="w-full"
-              >
-                {isOutOfStock ? 'Sold Out' : 'Add to Cart'}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                leftIcon={Zap}
-                disabled={isOutOfStock}
-                onClick={handleBuyNow}
-                className="w-full border-slate-300 text-slate-900 hover:bg-slate-50"
-              >
-                Buy Now
-              </Button>
-            </div>
-          </div>
-
-          {/* Vendor Details Card */}
-          <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-subtle flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0">
-              <Store className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-bold text-slate-900">
-                  {product.vendor?.name || 'Marketplace vendor'}
-                </h4>
-                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-semibold border border-emerald-200">
-                  Seller
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
-                Seller details are provided by the marketplace listing.
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="wrap product-detail">
+      <div className="breadcrumbs">
+        <Link to={user ? roleHome(user) : "/"}>
+          {user
+            ? user.role === "CUSTOMER"
+              ? "Your shop"
+              : "Dashboard"
+            : "Home"}
+        </Link>
+        <span>/</span>
+        <Link to="/products">The collection</Link>
+        <span>/</span>
+        <span>{product.name}</span>
       </div>
-
+      <div className="product-layout">
+        <ProductGallery key={product.id} product={product} />
+        <section className="product-info">
+          <p className="eyebrow">
+            {product.vendor?.name} / {product.category?.name}
+          </p>
+          <h1>{product.name}</h1>
+          <a className="detail-rating" href="#reviews">
+            {product.reviewCount ? (
+              <>
+                <Stars value={product.ratingAverage} />
+                <span>
+                  {product.ratingAverage.toFixed(1)} · {product.reviewCount}{" "}
+                  {product.reviewCount === 1 ? "review" : "reviews"}
+                </span>
+              </>
+            ) : (
+              "No reviews yet"
+            )}
+          </a>
+          <p className="detail-price">{money(product.price)}</p>
+          <p className="detail-caption">Delivery calculated at checkout.</p>
+          <p className="product-description">{product.description}</p>
+          <p className={`stock-status ${unavailable ? "sold-out" : ""}`}>
+            {unavailable
+              ? "Currently out of stock"
+              : product.stock < 10
+                ? `${product.stock} available — ready for a new home`
+                : "In stock, ready for your everyday"}
+          </p>
+          <div className="purchase-controls">
+            <Quantity
+              value={selectedQuantity}
+              onChange={(value) => {
+                setQuantity(value);
+                setAdded(false);
+              }}
+              max={remaining}
+              disabled={adding || unavailable || remaining === 0}
+            />
+            <button
+              className="store-button"
+              disabled={adding || unavailable || remaining === 0}
+              onClick={add}
+            >
+              {adding ? (
+                <Loader2 className="spin" size={17} />
+              ) : added ? (
+                <Check size={17} />
+              ) : (
+                <ShoppingBag size={17} />
+              )}{" "}
+              {unavailable
+                ? "Sold out"
+                : remaining === 0
+                  ? "All available units in your bag"
+                  : adding
+                    ? "Adding…"
+                    : added
+                      ? "Added to your bag"
+                      : "Add to bag"}
+            </button>
+          </div>
+          <SaveButton product={product} />
+          {inBag > 0 && (
+            <p className="detail-bag-note">
+              {inBag} {inBag === 1 ? "is" : "are"} already in your bag.
+            </p>
+          )}
+          {(added || inBag > 0) && (
+            <Link className="arrow-link" to="/cart" style={{ marginTop: 18 }}>
+              View your bag
+              <ArrowRight size={16} />
+            </Link>
+          )}
+          <div className="product-delivery">
+            <Truck size={19} />
+            <span>
+              Free standard delivery on orders ₹2,500+.
+              <br />
+              Pay when your order arrives.
+            </span>
+          </div>
+          <div className="product-accordions">
+            {product.specifications?.length > 0 && (
+              <details open>
+                <summary>Product details</summary>
+                <dl className="product-specifications">
+                  {product.specifications.map((detail, i) => (
+                    <div key={i}>
+                      <dt>{detail.label}</dt>
+                      <dd>{detail.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
+            )}
+            <details>
+              <summary>Delivery & cancellations</summary>
+              <p>
+                Standard delivery is ₹149, or free on orders of ₹2,500 or more.
+                Express delivery is ₹299. You can cancel a pending or confirmed
+                order from your account.{" "}
+                <Link to="/delivery" className="text-button">
+                  Read the details
+                </Link>
+              </p>
+            </details>
+            <details>
+              <summary>A note on the collection</summary>
+              <p>
+                This is a demonstration catalogue for the FORME college project.
+                Product names, prices and descriptions are sample data; no real
+                payment or shipment is made.
+              </p>
+            </details>
+          </div>
+        </section>
+      </div>
+      <ProductReviews
+        key={product.id}
+        product={product}
+        onSummary={updateRating}
+      />
+      {related.length > 0 && (
+        <section className="related-products">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">GOOD THINGS GO TOGETHER</p>
+              <h2>A little more to explore.</h2>
+            </div>
+          </div>
+          <div className="product-grid">
+            {related.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

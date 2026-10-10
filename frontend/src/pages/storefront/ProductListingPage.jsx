@@ -1,221 +1,351 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { productsApi } from '../../api/products';
-import { ProductGrid } from '../../components/customer/ProductGrid';
-import { FilterSidebar } from '../../components/customer/FilterSidebar';
-import { Pagination } from '../../components/common/Pagination';
-import { Select } from '../../components/common/Select';
-import { SlidersHorizontal, X } from 'lucide-react';
-
-const SORT_OPTIONS = [
-  { label: 'Newest Arrivals', value: 'newest' },
-  { label: 'Price: Low to High', value: 'price_asc' },
-  { label: 'Price: High to Low', value: 'price_desc' },
-  { label: 'Name: A to Z', value: 'name_asc' },
-  { label: 'Name: Z to A', value: 'name_desc' },
-  { label: 'Oldest Arrivals', value: 'oldest' },
-];
-
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import { roleHome } from "../../lib/authNavigation";
+import { productsApi } from "../../api/products";
+import { useCategories } from "../../context/CategoryContext";
+import { useAuth } from "../../context/AuthContext";
+import { ProductCard } from "../../components/customer/ProductCard";
+import { FormeSelect } from "../../components/forme/Select";
 export const ProductListingPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // Read current query state from URL
-  const search = searchParams.get('search') || '';
-  const category = searchParams.get('category') || '';
-  const minPrice = searchParams.get('minPrice') || '';
-  const maxPrice = searchParams.get('maxPrice') || '';
-  const sort = searchParams.get('sort') || 'newest';
-  const page = Number(searchParams.get('page')) || 1;
-
-  const [products, setProducts] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 12 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-
-  // Fetch products whenever URL search parameters change
+  const [params, setParams] = useSearchParams(),
+    query = params.toString();
+  const { user } = useAuth();
+  const {
+    categories,
+    loading: categoriesLoading,
+    error: categoryError,
+    refresh,
+  } = useCategories();
+  const [data, setData] = useState(null),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [retry, setRetry] = useState(0);
   useEffect(() => {
-    const fetchCatalog = async () => {
-      try {
-        setIsLoading(true);
-        const params = {
-          page,
-          limit: 12,
-          sort,
-          ...(search && { search }),
-          ...(category && { category }),
-          ...(minPrice && { minPrice }),
-          ...(maxPrice && { maxPrice }),
-        };
-
-        const res = await productsApi.getProducts(params);
-        if (res.products) {
-          setProducts(res.products);
-          if (res.pagination) {
-            setPagination(res.pagination);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load products', err);
-      } finally {
-        setIsLoading(false);
-      }
+    let active = true;
+    setLoading(true);
+    setError("");
+    productsApi
+      .getProducts({
+        ...Object.fromEntries(new URLSearchParams(query)),
+        limit: 12,
+      })
+      .then((result) => {
+        if (active) setData(result);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
     };
-
-    fetchCatalog();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [search, category, minPrice, maxPrice, sort, page]);
-
-  // Update query params helper
-  const updateFilters = (newFilters) => {
-    const nextParams = new URLSearchParams();
-
-    if (newFilters.search) nextParams.set('search', newFilters.search);
-    if (newFilters.category) nextParams.set('category', newFilters.category);
-    if (newFilters.minPrice) nextParams.set('minPrice', newFilters.minPrice);
-    if (newFilters.maxPrice) nextParams.set('maxPrice', newFilters.maxPrice);
-    if (newFilters.sort && newFilters.sort !== 'newest') nextParams.set('sort', newFilters.sort);
-    if (newFilters.page && newFilters.page > 1) nextParams.set('page', String(newFilters.page));
-
-    setSearchParams(nextParams);
+  }, [query, retry]);
+  const update = (key, value) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    if (key !== "page") next.delete("page");
+    setParams(next);
+    if (key === "page") window.scrollTo({ top: 0, behavior: "instant" });
   };
-
-  const handleSortChange = (e) => {
-    updateFilters({
-      search,
-      category,
-      minPrice,
-      maxPrice,
-      sort: e.target.value,
-      page: 1,
-    });
-  };
-
-  const handlePageChange = (newPage) => {
-    updateFilters({
-      search,
-      category,
-      minPrice,
-      maxPrice,
-      sort,
-      page: newPage,
-    });
-  };
-
-  const handleResetFilters = () => {
-    setSearchParams(new URLSearchParams());
-  };
-
+  const activeCategory = categories.find(
+    (category) => category.slug === params.get("category"),
+  );
+  const categoryOptions = [
+    { value: "", label: "All products" },
+    ...categories.map((category) => ({
+      value: category.slug,
+      label: category.name,
+    })),
+  ];
+  const title = params.get("search")
+    ? `Results for “${params.get("search")}”`
+    : activeCategory?.name || "All products";
+  const resultCount = data?.pagination.total || 0;
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Top Header & Search Bar */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="wrap browse-page">
+      <div className="breadcrumbs">
+        <Link to={user ? roleHome(user) : "/"}>
+          {user
+            ? user.role === "CUSTOMER"
+              ? "Your shop"
+              : "Dashboard"
+            : "Home"}
+        </Link>
+        <span>/</span>
+        <span>
+          {params.get("search")
+            ? "Search"
+            : activeCategory?.name || "All products"}
+        </span>
+      </div>
+      <header className="browse-heading">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            {category
-              ? `${category.charAt(0).toUpperCase() + category.slice(1)} Collection`
-              : search
-              ? `Results for "${search}"`
-              : 'Marketplace Catalog'}
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Showing verified listings from certified multi-vendor merchant studios
-          </p>
+          <p className="eyebrow">THE COLLECTION</p>
+          <h1>{title}</h1>
         </div>
-
-        {/* Action bar (Sort + Mobile filter toggle) */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setMobileFilterOpen(true)}
-            className="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
-            <span>Filters</span>
-          </button>
-
-          <div className="w-48">
-            <Select
-              value={sort}
-              onChange={handleSortChange}
-              options={SORT_OPTIONS}
-              className="py-2 text-xs"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Layout: Sidebar Filters + Products Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-        {/* Desktop Filter Sidebar */}
-        <div className="hidden lg:block lg:col-span-1 sticky top-24">
-          <FilterSidebar
-            filters={{ category, minPrice, maxPrice, search }}
-            onChange={updateFilters}
-            onReset={handleResetFilters}
-          />
-        </div>
-
-        {/* Products Grid & Pagination */}
-        <div className="lg:col-span-3 space-y-8">
-          <ProductGrid
-            products={products}
-            isLoading={isLoading}
-            onResetFilters={handleResetFilters}
-            emptyTitle={
-              search
-                ? `No products found for "${search}"`
-                : 'No products match your selected filters'
-            }
-          />
-
-          {/* Pagination Controls */}
-          {!isLoading && pagination.totalPages > 1 && (
-            <div className="pt-4 border-t border-slate-200">
-              <Pagination
-                page={pagination.page}
-                totalPages={pagination.totalPages}
-                totalItems={pagination.total}
-                limit={pagination.limit}
-                onPageChange={handlePageChange}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile Filters Drawer */}
-      {mobileFilterOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
-            onClick={() => setMobileFilterOpen(false)}
-          />
-          <div className="relative ml-auto w-full max-w-xs bg-white h-full shadow-2xl p-5 overflow-y-auto flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <span className="font-bold text-sm text-slate-900">Refine Catalog</span>
-              <button
-                onClick={() => setMobileFilterOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
+        <p>Useful things. Beautifully considered.</p>
+      </header>
+      <div className="browse-layout">
+        <aside className="category-sidebar">
+          <h2>Categories</h2>
+          {categoriesLoading ? (
+            <p className="field-help">Loading categories…</p>
+          ) : categoryError ? (
+            <div className="inline-error">
+              <p>Couldn't load categories.</p>
+              <button className="text-button" onClick={refresh}>
+                Try again
               </button>
             </div>
-            <div className="py-4 flex-1">
-              <FilterSidebar
-                filters={{ category, minPrice, maxPrice, search }}
-                onChange={(f) => {
-                  updateFilters(f);
-                  setMobileFilterOpen(false);
-                }}
-                onReset={() => {
-                  handleResetFilters();
-                  setMobileFilterOpen(false);
-                }}
+          ) : (
+            <nav aria-label="Product categories">
+              {categoryOptions.map((category) => (
+                <button
+                  key={category.value}
+                  aria-current={
+                    (params.get("category") || "") === category.value
+                      ? "true"
+                      : undefined
+                  }
+                  className={
+                    (params.get("category") || "") === category.value
+                      ? "selected"
+                      : ""
+                  }
+                  onClick={() => update("category", category.value)}
+                >
+                  <span>{category.label}</span>
+                </button>
+              ))}
+            </nav>
+          )}
+          <p>
+            Free standard delivery
+            <br />
+            on orders ₹2,500+.
+          </p>
+        </aside>
+        <section
+          className="browse-results"
+          aria-label="Product results"
+          aria-busy={loading}
+        >
+          <div className="browse-toolbar">
+            <span aria-live="polite">
+              {loading
+                ? "Finding products…"
+                : `${resultCount} ${resultCount === 1 ? "product" : "products"}`}
+            </span>
+            <div className="browse-controls">
+              <FormeSelect
+                compact
+                className="mobile-category-select"
+                label="Category"
+                value={params.get("category") || ""}
+                options={categoryOptions}
+                onValueChange={(value) => update("category", value)}
+              />
+              <FormeSelect
+                compact
+                label="Price"
+                value={params.get("maxPrice") || ""}
+                onValueChange={(value) => update("maxPrice", value)}
+                options={[
+                  { value: "", label: "Any price" },
+                  { value: "1000", label: "Up to ₹1,000" },
+                  { value: "3000", label: "Up to ₹3,000" },
+                  { value: "5000", label: "Up to ₹5,000" },
+                ]}
+              />
+              <FormeSelect
+                compact
+                label="Sort by"
+                value={params.get("sort") || "newest"}
+                onValueChange={(value) => update("sort", value)}
+                options={[
+                  { value: "newest", label: "Recently added" },
+                  { value: "rating_desc", label: "Highest rated" },
+                  { value: "best_selling", label: "Best selling" },
+                  { value: "price_asc", label: "Price: low to high" },
+                  { value: "price_desc", label: "Price: high to low" },
+                  { value: "name_asc", label: "Name: A to Z" },
+                ]}
               />
             </div>
           </div>
-        </div>
-      )}
+          <div className="browse-refinements">
+            <label className="stock-filter">
+              <input
+                type="checkbox"
+                checked={params.get("availability") === "in_stock"}
+                onChange={(event) =>
+                  update("availability", event.target.checked ? "in_stock" : "")
+                }
+              />
+              <span>In stock only</span>
+            </label>
+            <FormeSelect
+              compact
+              label="Customer rating"
+              value={params.get("minRating") || ""}
+              onValueChange={(value) => update("minRating", value)}
+              options={[
+                { value: "", label: "All ratings" },
+                { value: "4", label: "4 stars & up" },
+                { value: "3", label: "3 stars & up" },
+                { value: "2", label: "2 stars & up" },
+              ]}
+            />
+          </div>
+          {params.get("sort") === "best_selling" && (
+            <p className="sort-explanation">
+              Ordered by units in delivered orders. Cancelled and unfulfilled
+              orders don’t count.
+            </p>
+          )}
+          {(params.get("search") ||
+            params.get("maxPrice") ||
+            params.get("minPrice") ||
+            params.get("category") ||
+            params.get("availability") ||
+            params.get("minRating")) && (
+            <div className="active-filters">
+              {params.get("category") && (
+                <button
+                  onClick={() => update("category", "")}
+                  aria-label="Remove category filter"
+                >
+                  {activeCategory?.name || "Category"}
+                  <X size={13} />
+                </button>
+              )}
+              {params.get("availability") && (
+                <button
+                  onClick={() => update("availability", "")}
+                  aria-label="Remove in stock filter"
+                >
+                  In stock
+                  <X size={13} />
+                </button>
+              )}
+              {params.get("minRating") && (
+                <button
+                  onClick={() => update("minRating", "")}
+                  aria-label="Remove rating filter"
+                >
+                  {params.get("minRating")} stars & up
+                  <X size={13} />
+                </button>
+              )}
+              {params.get("minPrice") && (
+                <button
+                  onClick={() => update("minPrice", "")}
+                  aria-label="Remove minimum price filter"
+                >
+                  From ₹{Number(params.get("minPrice")).toLocaleString("en-IN")}
+                  <X size={13} />
+                </button>
+              )}
+              {params.get("search") && (
+                <button onClick={() => update("search", "")}>
+                  Search: {params.get("search")}
+                  <X size={13} />
+                </button>
+              )}
+              {params.get("maxPrice") && (
+                <button onClick={() => update("maxPrice", "")}>
+                  Up to ₹
+                  {Number(params.get("maxPrice")).toLocaleString("en-IN")}
+                  <X size={13} />
+                </button>
+              )}
+              <button
+                className="clear-filters"
+                onClick={() => {
+                  const next = new URLSearchParams();
+                  if (params.get("sort")) next.set("sort", params.get("sort"));
+                  setParams(next);
+                }}
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+          {loading && !data ? (
+            <div className="product-grid">
+              {[0, 1, 2].map((i) => (
+                <div className="product-skeleton" key={i} />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="browse-empty" role="alert">
+              <h2>We couldn't load the collection.</h2>
+              <p>{error}</p>
+              <button
+                className="store-button secondary"
+                onClick={() => setRetry((n) => n + 1)}
+              >
+                Try again
+              </button>
+            </div>
+          ) : !data?.products.length ? (
+            <div className="browse-empty">
+              <p className="eyebrow">A LITTLE MORE ROOM</p>
+              <h2>No matching products.</h2>
+              <p>
+                Try another search or clear your filters to see the full
+                collection.
+              </p>
+              <button className="store-button" onClick={() => setParams({})}>
+                Show all products
+                <ArrowRight size={17} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <div
+                className={`product-grid${loading ? " updating" : ""}`}
+                inert={loading || undefined}
+              >
+                {data.products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+              {data.pagination.totalPages > 1 && (
+                <nav className="pagination-row" aria-label="Collection pages">
+                  <button
+                    className="icon-button"
+                    aria-label="Previous page"
+                    disabled={!data.pagination.hasPreviousPage}
+                    onClick={() =>
+                      update("page", String(data.pagination.page - 1))
+                    }
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <span>
+                    Page {data.pagination.page} of {data.pagination.totalPages}
+                  </span>
+                  <button
+                    className="icon-button"
+                    aria-label="Next page"
+                    disabled={!data.pagination.hasNextPage}
+                    onClick={() =>
+                      update("page", String(data.pagination.page + 1))
+                    }
+                  >
+                    <ArrowRight size={18} />
+                  </button>
+                </nav>
+              )}
+            </>
+          )}
+        </section>
+      </div>
     </div>
   );
 };

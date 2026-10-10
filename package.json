@@ -1,0 +1,17 @@
+{
+  "name": "forme-store",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "setup": "npm ci --prefix backend && npm ci --prefix frontend && node backend/node_modules/prisma/build/index.js generate --schema backend/prisma/schema.prisma",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build --prefix frontend",
+    "test": "node --test scripts/*.test.mjs && npm test --prefix backend && npm run test:integration --prefix backend && npm test --prefix frontend",
+    "lint": "npm run lint --prefix frontend",
+    "format": "node frontend/node_modules/prettier/bin/prettier.cjs --write frontend/src/pages/storefront frontend/src/components/forme frontend/src/index.css backend/services/checkoutService.js"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

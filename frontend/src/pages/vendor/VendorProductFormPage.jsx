@@ -1,334 +1,317 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { productsApi } from '../../api/products';
-import { categoriesApi } from '../../api/categories';
-import { Input } from '../../components/common/Input';
-import { Select } from '../../components/common/Select';
-import { Button } from '../../components/common/Button';
-import { useToast } from '../../context/ToastContext';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { useCallback, useEffect, useState } from "react";
 import {
-  ChevronLeft,
-  Upload,
-  Image as ImageIcon,
-  Save,
-  CheckCircle2,
-} from 'lucide-react';
-
-export const VendorProductFormPage = () => {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { productsApi } from "../../api/products";
+import { categoriesApi } from "../../api/categories";
+import { useToast } from "../../context/ToastContext";
+import { Field } from "../../components/forme/UI";
+import { FormeSelect } from "../../components/forme/Select";
+import {
+  PageHeading,
+  WorkState,
+  useResource,
+} from "../../components/management/UI";
+import { money, productPhotos } from "../../lib/format";
+import { ProductPhotosEditor } from "../../components/management/ProductPhotosEditor";
+import { ProductDetailsEditor } from "../../components/management/ProductDetailsEditor";
+import { ProductPhoto } from "../../components/forme/ProductGallery";
+const blank = {
+  name: "",
+  description: "",
+  price: "",
+  stock: "",
+  categoryId: "",
+  images: [],
+  specifications: [],
+  status: "DRAFT",
+};
+export const VendorProductFormPage = ({ role = "vendor" }) => {
   const { id } = useParams();
-  const isEditing = Boolean(id);
-  const navigate = useNavigate();
-  const toast = useToast();
-
-  const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(isEditing);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Form Fields
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [stock, setStock] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [status, setStatus] = useState('ACTIVE');
-
-  // Errors
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    const initForm = async () => {
-      try {
-        const catRes = await categoriesApi.getCategories();
-        if (catRes.categories) {
-          setCategories(catRes.categories);
-          if (!isEditing && catRes.categories.length > 0) {
-            setCategoryId(String(catRes.categories[0].id));
-          }
-        }
-
-        if (isEditing) {
-          const prodRes = await productsApi.getProductById(id);
-          if (prodRes.product) {
-            const p = prodRes.product;
-            setName(p.name || '');
-            setDescription(p.description || '');
-            setPrice(String(p.price || ''));
-            setStock(String(p.stock || ''));
-            setCategoryId(String(p.categoryId || (p.category?.id || '')));
-            setImageUrl(p.imageUrl || p.images?.[0]?.url || '');
-            setStatus(p.status || 'ACTIVE');
-          }
-        }
-      } catch (err) {
-        console.error('Failed to initialize product form', err);
-        toast.error('Could not load product details.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initForm();
-  }, [id, isEditing]);
-
-  const validate = () => {
-    const errs = {};
-    if (!name.trim()) errs.name = 'Product name is required (min 2 characters).';
-    if (!description.trim()) errs.description = 'Product description is required.';
-    if (!price || Number(price) <= 0) errs.price = 'Enter a valid positive price.';
-    if (stock === '' || Number(stock) < 0) errs.stock = 'Stock must be 0 or higher.';
-    if (!categoryId) errs.categoryId = 'Please choose a category.';
-    if (!imageUrl.trim()) errs.imageUrl = 'Please provide an image URL for display.';
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) {
-      toast.error('Please resolve the form validation errors.');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const payload = {
-        name: name.trim(),
-        description: description.trim(),
-        price: Number(price),
-        stock: Number(stock),
-        categoryId: Number(categoryId),
-        imageUrl: imageUrl.trim(),
-        images: [imageUrl.trim()],
-        status,
-      };
-
-      if (isEditing) {
-        await productsApi.updateProduct(id, payload);
-        toast.success(`"${name}" updated successfully!`);
-      } else {
-        await productsApi.createProduct(payload);
-        toast.success(`"${name}" published to catalog!`);
-      }
-      navigate('/vendor/products');
-    } catch (err) {
-      toast.error(err.message || 'Failed to save product.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
-        <LoadingSpinner size="lg" />
-        <p className="text-xs text-slate-500 font-medium">Loading product specifications...</p>
-      </div>
-    );
-  }
-
+  const [params] = useSearchParams();
+  const backTo = `/${role}/products${role === "admin" && params.get("vendor") ? `?vendor=${encodeURIComponent(params.get("vendor"))}` : ""}`;
+  const loader = useCallback(async () => {
+    const [categories, products] = await Promise.all([
+      categoriesApi.getCategories(),
+      id ? productsApi.getMyProducts() : Promise.resolve({ products: [] }),
+    ]);
+    const product = id
+      ? products.products.find((p) => p.id === Number(id))
+      : null;
+    if (id && !product) throw Error("This product could not be found.");
+    if (product?.deleted)
+      throw Error(
+        "This product is archived. Restore it from Products → Archived before editing.",
+      );
+    return { categories: categories.categories, product };
+  }, [id]);
+  const resource = useResource(loader);
+  if (resource.loading || resource.error)
+    return <WorkState {...resource} retry={resource.reload} />;
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Back button */}
-      <Link
-        to="/vendor/products"
-        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
-      >
-        <ChevronLeft className="w-4 h-4" /> Back to Products
-      </Link>
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {isEditing ? `Edit Product: ${name || 'Item'}` : 'Publish New Product'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Provide accurate details, high-res photography, and stock count
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Form: Details */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-subtle space-y-5">
-          <Input
-            label="Product Title"
-            required
-            placeholder="e.g. Horizon Ultra-Slim Mechanical Keyboard"
-            value={name}
-            error={errors.name}
-            onChange={(e) => setName(e.target.value)}
-          />
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
-              Product Description <span className="text-rose-500">*</span>
-            </label>
-            <textarea
-              rows="5"
-              required
-              placeholder="Detail build materials, technical specifications, dimensions, and included accessories..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className={`w-full text-sm p-3 bg-white border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                errors.description ? 'border-rose-300' : 'border-slate-300 focus:border-indigo-600'
-              }`}
-            />
-            {errors.description && (
-              <p className="mt-1 text-xs text-rose-600">{errors.description}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Retail Price ($ USD)"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              placeholder="149.00"
-              value={price}
-              error={errors.price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
-
-            <Input
-              label="Stock Inventory Count"
-              type="number"
-              min="0"
-              required
-              placeholder="25"
-              value={stock}
-              error={errors.stock}
-              onChange={(e) => setStock(e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Product Category"
-              required
-              value={categoryId}
-              error={errors.categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              options={categories.map((c) => ({ label: c.name, value: String(c.id) }))}
-            />
-
-            <Select
-              label="Catalog Visibility Status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              options={[
-                { label: 'ACTIVE (Live on Storefront)', value: 'ACTIVE' },
-                { label: 'DRAFT (Hidden from Storefront)', value: 'DRAFT' },
-                { label: 'OUT_OF_STOCK', value: 'OUT_OF_STOCK' },
-              ]}
-            />
-          </div>
-
-          <Input
-            label="Primary Product Image URL"
-            required
-            placeholder="https://images.unsplash.com/photo-..."
-            value={imageUrl}
-            error={errors.imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            helper="Use high-resolution square or 4:3 product photography (Unsplash or CDN link)"
-          />
-
-          <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-            <span className="text-slate-500 font-semibold text-[11px]">Quick Image Presets:</span>
-            <button
-              type="button"
-              onClick={() => setImageUrl('https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80')}
-              className="px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-medium text-[11px]"
-            >
-              Headphones
-            </button>
-            <button
-              type="button"
-              onClick={() => setImageUrl('https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80')}
-              className="px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-medium text-[11px]"
-            >
-              Watch
-            </button>
-            <button
-              type="button"
-              onClick={() => setImageUrl('https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80')}
-              className="px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-medium text-[11px]"
-            >
-              Camera
-            </button>
-            <button
-              type="button"
-              onClick={() => setImageUrl('https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=800&q=80')}
-              className="px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-medium text-[11px]"
-            >
-              Fresh Fruit
-            </button>
-          </div>
-
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => navigate('/vendor/products')}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              type="submit"
-              isLoading={isSubmitting}
-              leftIcon={Save}
-            >
-              {isEditing ? 'Save Changes' : 'Publish Product'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Right Preview Card */}
-        <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-subtle space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
-              Live Card Preview
-            </span>
-
-            <div className="aspect-square w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80';
-                  }}
-                />
-              ) : (
-                <div className="text-center p-4 text-slate-400">
-                  <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-50" />
-                  <p className="text-xs">Image preview will render here</p>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <p className="text-xs font-bold text-slate-900 truncate">
-                {name || 'Product Title Placeholder'}
-              </p>
-              <p className="text-sm font-extrabold text-indigo-600 mt-0.5">
-                ${price ? Number(price).toFixed(2) : '0.00'}
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {stock ? `${stock} units available` : 'Stock count unassigned'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </form>
-    </div>
+    <ProductEditor
+      key={id || "new"}
+      id={id}
+      product={resource.data.product}
+      categories={resource.data.categories}
+      role={role}
+      backTo={backTo}
+    />
   );
 };
+function ProductEditor({ id, product: p, categories, role, backTo }) {
+  const navigate = useNavigate(),
+    toast = useToast();
+  const [form, setForm] = useState(() =>
+    p
+      ? {
+          name: p.name,
+          description: p.description,
+          price: String(p.price),
+          stock: String(p.stock),
+          categoryId: String(p.categoryId),
+          images: productPhotos(p),
+          specifications: p.specifications || [],
+          status: p.status,
+        }
+      : blank,
+  );
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [initial] = useState(() => JSON.stringify(form));
+  const dirty = initial !== JSON.stringify(form);
+  useEffect(() => {
+    if (!dirty && !uploading) return;
+    const warn = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, uploading]);
+  const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const save = async (event) => {
+    event.preventDefault();
+    if (busy || uploading) return;
+    if (!form.categoryId) {
+      setError("Choose a category for this product.");
+      return;
+    }
+    if (
+      ["ACTIVE", "OUT_OF_STOCK"].includes(form.status) &&
+      !form.images.length
+    ) {
+      setError(
+        "Add at least one product photo before publishing, or save as a draft.",
+      );
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const payload = {
+        ...form,
+        name: form.name.trim(),
+        description: form.description.trim(),
+        price: Number(form.price),
+        stock: Number(form.stock),
+        status: form.status === "OUT_OF_STOCK" ? "ACTIVE" : form.status,
+        categoryId: Number(form.categoryId),
+        images: form.images,
+        specifications: form.specifications.map(({ label, value }) => ({
+          label: label.trim(),
+          value: value.trim(),
+        })),
+      };
+      if (id) await productsApi.updateProduct(id, payload);
+      else await productsApi.createProduct(payload);
+      toast.success(
+        form.status === "DRAFT"
+          ? "Saved as a draft. You can publish it when it’s ready."
+          : `${form.name} has been saved.`,
+        "Product saved",
+      );
+      navigate(backTo);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Link to={backTo} className="work-back-link">
+        <ArrowLeft size={15} />
+        Back to products
+      </Link>
+      <PageHeading
+        eyebrow={role === "admin" ? "THE WHOLE COLLECTION" : "YOUR COLLECTION"}
+        title={id ? "Edit product" : "Add product"}
+        description="Set up the details, price and availability for your listing."
+      />
+      <form onSubmit={save} className="work-editor">
+        <div className="work-form">
+          <section className="work-form-section">
+            <h2>01 · The essentials</h2>
+            <Field
+              id="product-name"
+              label="Product name"
+              required
+              minLength={2}
+              maxLength={200}
+              value={form.name}
+              onChange={(e) => update("name", e.target.value)}
+              placeholder="e.g. Daybreak cup"
+            />
+            <div>
+              <label className="work-label" htmlFor="product-description">
+                Description *
+              </label>
+              <textarea
+                id="product-description"
+                required
+                maxLength={5000}
+                value={form.description}
+                onChange={(e) => update("description", e.target.value)}
+                placeholder="Materials, dimensions, care and what’s included."
+              />
+              <p className="work-form-help">
+                Include materials, dimensions, care instructions and what’s
+                included.
+              </p>
+            </div>
+            <FormeSelect
+              label="Category"
+              required
+              placeholder="Choose a category"
+              value={form.categoryId}
+              onValueChange={(value) => update("categoryId", value)}
+              options={categories.map((c) => ({
+                value: String(c.id),
+                label: c.name,
+              }))}
+            />
+          </section>
+          <section className="work-form-section">
+            <h2>02 · Price & availability</h2>
+            <div className="work-form-grid">
+              <Field
+                id="product-price"
+                label="Price (₹)"
+                max="99999999.99"
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                value={form.price}
+                onChange={(e) => update("price", e.target.value)}
+                placeholder="890"
+              />
+              <Field
+                id="product-stock"
+                label="Available units"
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={form.stock}
+                onChange={(e) => update("stock", e.target.value)}
+                placeholder="20"
+              />
+            </div>
+            <FormeSelect
+              label="Visibility"
+              value={form.status === "OUT_OF_STOCK" ? "ACTIVE" : form.status}
+              onValueChange={(value) => update("status", value)}
+              options={[
+                { value: "DRAFT", label: "Draft · hidden from the store" },
+                { value: "ACTIVE", label: "Live · available in the store" },
+                {
+                  value: "ARCHIVED",
+                  label: "Archived · hidden from the store",
+                },
+              ]}
+            />
+            <p className="work-form-help">
+              A live product with zero available units is marked out of stock
+              automatically.
+            </p>
+          </section>
+          <section className="work-form-section">
+            <h2>03 · Product photos</h2>
+            <ProductPhotosEditor
+              images={form.images}
+              onChange={(images) => update("images", images)}
+              onBusyChange={setUploading}
+            />
+          </section>
+          <section className="work-form-section">
+            <h2>04 · The details that matter</h2>
+            <ProductDetailsEditor
+              value={form.specifications}
+              onChange={(details) => update("specifications", details)}
+            />
+          </section>
+          {error && (
+            <p className="work-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="work-form-actions">
+            <Link to={backTo} className="work-button secondary">
+              Cancel
+            </Link>
+            <button
+              className="work-button"
+              disabled={busy || uploading}
+              aria-busy={busy || uploading}
+            >
+              {uploading
+                ? "Uploading photos…"
+                : busy
+                  ? "Saving…"
+                  : form.status === "DRAFT"
+                    ? "Save draft"
+                    : "Save product"}
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        </div>
+        <aside className="work-product-preview">
+          <p className="eyebrow">STOREFRONT PREVIEW</p>
+          <div className="work-preview-cover">
+            <ProductPhoto
+              src={form.images[0]?.url}
+              alt={form.images[0]?.alt || "Cover preview"}
+            />
+          </div>
+          {form.images.length > 1 && (
+            <div className="work-preview-thumbnails">
+              {form.images.slice(1, 5).map((image) => (
+                <ProductPhoto
+                  key={image.url}
+                  src={image.url}
+                  alt={image.alt || "Gallery preview"}
+                />
+              ))}
+              <span>{form.images.length} photos</span>
+            </div>
+          )}
+          <strong>{form.name || "Your product name"}</strong>
+          <span>{money(form.price)}</span>
+          <p style={{ marginTop: 15 }}>
+            {categories.find((c) => String(c.id) === form.categoryId)?.name ||
+              "Choose a category"}
+            <br />
+            {Number(form.stock) || 0} units in stock
+          </p>
+        </aside>
+      </form>
+    </>
+  );
+}

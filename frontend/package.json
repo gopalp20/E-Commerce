@@ -7,9 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/dm-sans": "5.3.0",
+    "@fontsource-variable/manrope": "5.3.0",
+    "@radix-ui/react-dropdown-menu": "^2.1.25",
+    "@radix-ui/react-select": "^2.3.8",
     "autoprefixer": "^10.5.6",
     "axios": "^1.20.0",
     "clsx": "^2.1.1",
@@ -26,6 +31,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
+    "prettier": "^3.9.9",
     "vite": "^8.3.0"
   }
 }

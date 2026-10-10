@@ -6,14 +6,13 @@ const asyncHandler = require("../utils/asyncHandler");
 
 const idOf = (value) => {
   const id = Number(value);
-  if (!Number.isInteger(id))
-    throw new AppError("Invalid user ID", 400);
+  if (!Number.isInteger(id)) throw new AppError("Invalid user ID", 400);
   return id;
 };
 
 const applyVendor = asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({
-    where: { id: req.user.id }
+    where: { id: req.user.id },
   });
 
   if (!user || user.role !== "CUSTOMER")
@@ -24,12 +23,12 @@ const applyVendor = asyncHandler(async (req, res) => {
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { vendorRequest: true }
+    data: { vendorRequest: true },
   });
 
   res.json({
     success: true,
-    message: "Vendor request submitted successfully"
+    message: "Vendor request submitted successfully",
   });
 });
 
@@ -37,19 +36,19 @@ const getVendorRequests = asyncHandler(async (req, res) => {
   const requests = await prisma.user.findMany({
     where: {
       vendorRequest: true,
-      role: "CUSTOMER"
+      role: "CUSTOMER",
     },
     select: {
       id: true,
       name: true,
       email: true,
-      role: true
-    }
+      role: true,
+    },
   });
 
   res.json({
     success: true,
-    requests
+    requests,
   });
 });
 
@@ -57,32 +56,38 @@ const approveVendor = asyncHandler(async (req, res) => {
   const id = idOf(req.params.id);
 
   const user = await prisma.user.findUnique({
-    where: { id }
+    where: { id },
   });
 
-  if (!user)
-    throw new AppError("User not found", 404);
+  if (!user) throw new AppError("User not found", 404);
 
-  if (!user.vendorRequest)
-    throw new AppError("No pending vendor request", 400);
+  if (!user.vendorRequest) throw new AppError("No pending vendor request", 400);
 
   const updatedUser = await prisma.user.update({
     where: { id },
     data: {
       role: "VENDOR",
-      vendorRequest: false
-    }
+      vendorRequest: false,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      vendorRequest: true,
+      createdAt: true,
+    },
   });
 
   res.json({
     success: true,
     message: "Vendor approved successfully",
-    user: updatedUser
+    user: updatedUser,
   });
 });
 
 module.exports = {
   applyVendor,
   getVendorRequests,
-  approveVendor
+  approveVendor,
 };

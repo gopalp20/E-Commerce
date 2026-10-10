@@ -1,241 +1,295 @@
-import React, { useState, useEffect } from 'react';
-import { categoriesApi } from '../../api/categories';
-import { Table } from '../../components/common/Table';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { Modal } from '../../components/common/Modal';
-import { ConfirmDialog } from '../../components/common/ConfirmDialog';
-import { useToast } from '../../context/ToastContext';
-import { FolderTree, PlusCircle, Edit3, Trash2, Layers } from 'lucide-react';
-
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Plus, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
+import { categoriesApi } from "../../api/categories";
+import { useToast } from "../../context/ToastContext";
+import { Field } from "../../components/forme/UI";
+import {
+  PageHeading,
+  WorkState,
+  WorkSearch,
+  DataTable,
+  Thumbnail,
+  WorkDrawer,
+  Confirm,
+  useResource,
+  usePage,
+  Pagination,
+} from "../../components/management/UI";
+const loadCategories = () => categoriesApi.getCategories();
+const slugify = (value) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 export const AdminCategoriesPage = () => {
-  const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Modal form states
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Delete states
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const toast = useToast();
-
-  const fetchCategories = async () => {
+  const resource = useResource(loadCategories),
+    toast = useToast();
+  const [search, setSearch] = useState(""),
+    [editing, setEditing] = useState(null),
+    [target, setTarget] = useState(null),
+    [form, setForm] = useState({ name: "", slug: "" }),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const categories = resource.data?.categories || [];
+  const page = usePage(
+    categories.filter((c) =>
+      `${c.name} ${c.slug}`.toLowerCase().includes(search.toLowerCase()),
+    ),
+  );
+  const open = (category) => {
+    setEditing(category || { new: true });
+    setForm(
+      category
+        ? { name: category.name, slug: category.slug }
+        : { name: "", slug: "" },
+    );
+    setError("");
+  };
+  const save = async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
     try {
-      setIsLoading(true);
-      const res = await categoriesApi.getCategories();
-      if (res.categories) setCategories(res.categories);
-    } catch (err) {
-      console.error('Failed to load categories', err);
+      if (editing.id) await categoriesApi.updateCategory(editing.id, form);
+      else await categoriesApi.createCategory(form);
+      setEditing(null);
+      resource.reload();
+      toast.success(`${form.name} is ready in the store.`, "Category saved");
+    } catch (e) {
+      setError(e.message);
     } finally {
-      setIsLoading(false);
+      setBusy(false);
     }
   };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const handleOpenCreate = () => {
-    setEditingCategory(null);
-    setName('');
-    setSlug('');
-    setModalOpen(true);
-  };
-
-  const handleOpenEdit = (cat) => {
-    setEditingCategory(cat);
-    setName(cat.name);
-    setSlug(cat.slug);
-    setModalOpen(true);
-  };
-
-  const handleNameChange = (val) => {
-    setName(val);
-    if (!editingCategory) {
-      setSlug(val.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-'));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!name.trim() || !slug.trim()) {
-      toast.error('Category name and slug are required.');
-      return;
-    }
-
+  const remove = async () => {
+    setBusy(true);
+    setError("");
     try {
-      setIsSubmitting(true);
-      if (editingCategory) {
-        await categoriesApi.updateCategory(editingCategory.id, { name: name.trim(), slug: slug.trim() });
-        toast.success(`Category "${name}" updated successfully.`);
-      } else {
-        await categoriesApi.createCategory({ name: name.trim(), slug: slug.trim() });
-        toast.success(`Category "${name}" created.`);
-      }
-      setModalOpen(false);
-      fetchCategories();
-    } catch (err) {
-      toast.error('Failed to save category.');
+      await categoriesApi.deleteCategory(target.id);
+      toast.success(`${target.name} has been removed.`, "Category removed");
+      setTarget(null);
+      resource.reload();
+    } catch (e) {
+      setError(e.message);
     } finally {
-      setIsSubmitting(false);
+      setBusy(false);
     }
   };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
-    try {
-      setIsDeleting(true);
-      await categoriesApi.deleteCategory(deleteTarget.id);
-      toast.success(`Category "${deleteTarget.name}" deleted.`);
-      setDeleteTarget(null);
-      fetchCategories();
-    } catch (err) {
-      toast.error('Failed to delete category.');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const columns = [
-    {
-      header: 'Category Name',
-      accessor: 'name',
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-            <Layers className="w-4 h-4" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-900 text-xs">{row.name}</p>
-            <p className="text-[11px] text-slate-400">Slug: {row.slug}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      header: 'Department Slug',
-      accessor: 'slug',
-      render: (row) => (
-        <span className="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-          /products?category={row.slug}
-        </span>
-      ),
-    },
-    {
-      header: 'Catalog Count',
-      accessor: 'count',
-      render: (row) => (
-        <span className="text-xs font-semibold text-slate-700">
-          {row.count || 12} products
-        </span>
-      ),
-    },
-    {
-      header: 'Taxonomy Actions',
-      align: 'right',
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleOpenEdit(row)}
-            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-            title="Edit Category"
-          >
-            <Edit3 className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setDeleteTarget(row)}
-            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-            title="Delete Category"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ];
-
+  if (resource.loading || resource.error)
+    return <WorkState {...resource} retry={resource.reload} />;
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Marketplace Category Taxonomy ({categories.length})
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Organize catalog departments, search tags, and storefront navigation hierarchies
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          leftIcon={PlusCircle}
-          onClick={handleOpenCreate}
-        >
-          Create Category
-        </Button>
-      </div>
-
-      <Table
-        columns={columns}
-        data={categories}
-        isLoading={isLoading}
-        emptyMessage="No categories found."
-      />
-
-      {/* Create / Edit Modal */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editingCategory ? 'Edit Category' : 'Create New Category'}
-        description="Categories organize multi-vendor product listings and drive storefront filters."
+    <>
+      <PageHeading
+        eyebrow="THE COLLECTION"
+        title="Categories"
+        description="Organise the collection customers browse."
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Category Name"
-            required
-            placeholder="e.g. Acoustic & Sound Systems"
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
+        <button className="work-button" onClick={() => open()}>
+          <Plus size={17} />
+          New category
+        </button>
+      </PageHeading>
+      <div className="work-split">
+        <section>
+          <div className="work-toolbar">
+            <span className="work-secondary">
+              {categories.length} categories in your store
+            </span>
+            <WorkSearch
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                page.setPage(1);
+              }}
+              placeholder="Find a category"
+            />
+          </div>
+          <DataTable
+            caption="Store categories"
+            rows={page.rows}
+            columns={[
+              {
+                label: "Category",
+                render: (row) => (
+                  <div className="work-product-cell">
+                    <Thumbnail src={row.imageUrl} className="category-thumb" />
+                    <div>
+                      <button
+                        className="work-row-button"
+                        onClick={() => open(row)}
+                      >
+                        {row.name}
+                      </button>
+                      <small>/{row.slug}</small>
+                      <Link
+                        className="work-mobile-only work-category-count"
+                        to={`/products?category=${encodeURIComponent(row.slug)}`}
+                      >
+                        {row._count.products}{" "}
+                        {row._count.products === 1 ? "product" : "products"}{" "}
+                        <ArrowUpRight size={12} />
+                      </Link>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "In the collection",
+                className: "nowrap hide-phone",
+                render: (row) => (
+                  <Link
+                    className="work-row-button"
+                    to={`/products?category=${encodeURIComponent(row.slug)}`}
+                  >
+                    {row._count.products}{" "}
+                    {row._count.products === 1 ? "product" : "products"}
+                    <ArrowUpRight size={13} />
+                  </Link>
+                ),
+              },
+              {
+                label: "Actions",
+                className: "right",
+                render: (row) => (
+                  <div className="work-row-actions">
+                    <button
+                      aria-label={`Edit ${row.name}`}
+                      onClick={() => open(row)}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      aria-label={`Delete ${row.name}`}
+                      onClick={() => {
+                        setTarget(row);
+                        setError("");
+                      }}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
           />
-
-          <Input
-            label="URL Slug"
+          <Pagination {...page} />
+        </section>
+        <aside className="work-aside">
+          <p className="eyebrow">IN YOUR STOREFRONT</p>
+          <h2>
+            Categories in
+            <br />
+            your store
+          </h2>
+          <p>
+            Your categories appear in the shopping home and collection filters.
+            Add or rename one here, and the store follows.
+          </p>
+          <dl>
+            <div>
+              <dt>Categories</dt>
+              <dd>{categories.length}</dd>
+            </div>
+            <div>
+              <dt>Live products</dt>
+              <dd>{categories.reduce((n, c) => n + c._count.products, 0)}</dd>
+            </div>
+            <div>
+              <dt>Empty categories</dt>
+              <dd>{categories.filter((c) => !c._count.products).length}</dd>
+            </div>
+          </dl>
+          <Link to="/products" className="work-text-link">
+            View the collection
+            <ArrowUpRight size={15} />
+          </Link>
+        </aside>
+      </div>
+      <WorkDrawer
+        open={!!editing}
+        onClose={() => !busy && setEditing(null)}
+        title={editing?.id ? "Edit category" : "New category"}
+      >
+        <form className="work-form" onSubmit={save}>
+          <p className="work-form-help">
+            A clear name makes your collection easier to explore.
+          </p>
+          <Field
+            id="category-name"
+            label="Category name"
+            value={form.name}
+            minLength={2}
+            maxLength={100}
             required
-            placeholder="e.g. acoustic-sound-systems"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            helper="Use lowercase letters, numbers, and dashes only"
+            placeholder="e.g. Lighting"
+            onChange={(event) =>
+              setForm((f) => ({
+                ...f,
+                name: event.target.value,
+                ...(!editing.id && { slug: slugify(event.target.value) }),
+              }))
+            }
           />
-
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
-            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
+          <div>
+            <Field
+              id="category-slug"
+              label="URL name"
+              value={form.slug}
+              minLength={2}
+              maxLength={100}
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              required
+              onChange={(event) =>
+                setForm((f) => ({ ...f, slug: event.target.value }))
+              }
+            />
+            <p className="work-form-help">
+              Lowercase words separated by dashes. This is used in collection
+              links.
+            </p>
+          </div>
+          <div className="work-drawer-note">
+            Store preview
+            <br />
+            <strong>{form.name || "Your category name"}</strong>
+            <p className="work-form-help">
+              /products?category={form.slug || "category-name"}
+            </p>
+          </div>
+          {error && (
+            <p className="work-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="work-form-actions">
+            <button
+              type="button"
+              className="work-button secondary"
+              disabled={busy}
+              onClick={() => setEditing(null)}
+            >
               Cancel
-            </Button>
-            <Button variant="primary" size="sm" type="submit" isLoading={isSubmitting}>
-              {editingCategory ? 'Save Changes' : 'Create Category'}
-            </Button>
+            </button>
+            <button className="work-button" disabled={busy}>
+              {busy ? "Saving…" : "Save category"}
+            </button>
           </div>
         </form>
-      </Modal>
-
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Category"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? Any products assigned to this category will be unassigned.`}
-        confirmText="Confirm Delete"
-        isDanger
-        isLoading={isDeleting}
+      </WorkDrawer>
+      <Confirm
+        target={target}
+        title="Remove this category?"
+        description={`“${target?.name}” will disappear from the store navigation. Move its products to another category before removing it.`}
+        label="Remove category"
+        danger
+        busy={busy}
+        error={error}
+        onClose={() => setTarget(null)}
+        onConfirm={remove}
       />
-    </div>
+    </>
   );
 };

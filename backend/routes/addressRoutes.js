@@ -1,0 +1,13 @@
+const router = require("express").Router();
+const protect = require("../middleware/authMiddleware");
+const authorize = require("../middleware/authorize");
+const validate = require("../middleware/validate");
+const { savedAddressSchema } = require("../validations/schemas");
+const controller = require("../controllers/addressController");
+router.use(protect, authorize("CUSTOMER"));
+router.get("/", controller.getAddresses);
+router.post("/", validate(savedAddressSchema), controller.createAddress);
+router.put("/:id", validate(savedAddressSchema), controller.updateAddress);
+router.patch("/:id/default", controller.makeDefault);
+router.delete("/:id", controller.deleteAddress);
+module.exports = router;

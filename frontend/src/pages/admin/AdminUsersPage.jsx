@@ -1,178 +1,194 @@
-import React, { useState, useEffect } from 'react';
-import { adminApi } from '../../api/admin';
-import { Table } from '../../components/common/Table';
-import { Badge } from '../../components/common/Badge';
-import { SearchBar } from '../../components/common/SearchBar';
-import { Select } from '../../components/common/Select';
-import { Pagination } from '../../components/common/Pagination';
-import { useToast } from '../../context/ToastContext';
-import { User, Shield, Store, CheckCircle } from 'lucide-react';
-
+import { useState } from "react";
+import { ArrowRight } from "lucide-react";
+import { adminApi } from "../../api/admin";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import { FormeSelect } from "../../components/forme/Select";
+import {
+  PageHeading,
+  WorkSearch,
+  WorkState,
+  FilterTabs,
+  DataTable,
+  Status,
+  Person,
+  WorkDrawer,
+  useResource,
+  usePage,
+  Pagination,
+} from "../../components/management/UI";
+import { shortDate } from "../../components/management/Orders";
+const load = () => adminApi.getUsers();
 export const AdminUsersPage = () => {
-  const [users, setUsers] = useState([]);
-  const [roleFilter, setRoleFilter] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState(null);
-
-  const toast = useToast();
-  const limit = 8;
-
-  const fetchUsers = async () => {
+  const resource = useResource(load),
+    { user } = useAuth(),
+    toast = useToast();
+  const [search, setSearch] = useState(""),
+    [filter, setFilter] = useState("all"),
+    [selected, setSelected] = useState(null),
+    [role, setRole] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const users = resource.data?.users || [],
+    filtered = users.filter(
+      (u) =>
+        (filter === "all" || u.role === filter) &&
+        `${u.name} ${u.email}`.toLowerCase().includes(search.toLowerCase()),
+    ),
+    page = usePage(filtered);
+  const open = (person) => {
+    setSelected(person);
+    setRole(person.role);
+    setError("");
+  };
+  const save = async () => {
+    setBusy(true);
+    setError("");
     try {
-      setIsLoading(true);
-      const res = await adminApi.getUsers({ role: roleFilter || undefined, search: search || undefined });
-      if (res.users) setUsers(res.users);
-    } catch (err) {
-      console.error('Failed to load users', err);
+      await adminApi.updateUserRole(selected.id, role);
+      toast.success(
+        `${selected.name} is now a ${role.toLowerCase()}.`,
+        "Account updated",
+      );
+      setSelected(null);
+      resource.reload();
+    } catch (e) {
+      setError(e.message);
     } finally {
-      setIsLoading(false);
+      setBusy(false);
     }
   };
-
-  useEffect(() => {
-    fetchUsers();
-  }, [roleFilter, search]);
-
-  const handleRoleChange = async (userId, newRole) => {
-    try {
-      setUpdatingId(userId);
-      await adminApi.updateUserRole(userId, newRole);
-      toast.success(`User role updated to ${newRole}`);
-      fetchUsers();
-    } catch (err) {
-      toast.error('Failed to update role');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const totalPages = Math.ceil(users.length / limit) || 1;
-  const paginated = users.slice((page - 1) * limit, page * limit);
-
-  const columns = [
-    {
-      header: 'User',
-      accessor: 'name',
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <img
-            src={row.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'}
-            alt=""
-            className="w-9 h-9 rounded-full object-cover border border-slate-200"
-          />
-          <div>
-            <p className="font-bold text-slate-900 text-xs">{row.name}</p>
-            <p className="text-[11px] text-slate-400">{row.email}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      header: 'Assigned Role',
-      accessor: 'role',
-      render: (row) => <Badge status={row.role} showDot size="sm" />,
-    },
-    {
-      header: 'Created On',
-      accessor: 'createdAt',
-      render: (row) => (
-        <span className="text-xs text-slate-500">
-          {new Date(row.createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
-        </span>
-      ),
-    },
-    {
-      header: 'Account Status',
-      render: () => (
-        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-          <CheckCircle className="w-3 h-3 text-emerald-600" /> Active
-        </span>
-      ),
-    },
-    {
-      header: 'Change Role Action',
-      align: 'right',
-      render: (row) => (
-        <div className="w-36 ml-auto">
-          <select
-            value={row.role}
-            disabled={updatingId === row.id}
-            onChange={(e) => handleRoleChange(row.id, e.target.value)}
-            className="w-full text-xs font-semibold py-1 px-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-          >
-            <option value="CUSTOMER">Customer</option>
-            <option value="VENDOR">Vendor</option>
-            <option value="ADMIN">Admin</option>
-          </select>
-        </div>
-      ),
-    },
-  ];
-
+  if (resource.loading || resource.error)
+    return <WorkState {...resource} retry={resource.reload} />;
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            User Accounts ({users.length})
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Audit user accounts, security roles, and platform permissions
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        <div className="w-full sm:w-80">
-          <SearchBar
-            value={search}
-            onChange={(v) => {
-              setSearch(v);
-              setPage(1);
-            }}
-            placeholder="Search by name or email..."
-          />
-        </div>
-
-        <div className="w-full sm:w-48 sm:ml-auto">
-          <Select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(1);
-            }}
-            options={[
-              { label: 'All Roles', value: '' },
-              { label: 'Customers Only', value: 'CUSTOMER' },
-              { label: 'Vendors Only', value: 'VENDOR' },
-              { label: 'Administrators', value: 'ADMIN' },
-            ]}
-          />
-        </div>
-      </div>
-
-      <Table
-        columns={columns}
-        data={paginated}
-        isLoading={isLoading}
-        emptyMessage="No registered users found matching your criteria."
+    <>
+      <PageHeading
+        eyebrow="THE PEOPLE BEHIND FORME"
+        title="People"
+        description="Customers, independent makers and your store team."
       />
-
-      {!isLoading && totalPages > 1 && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          totalItems={users.length}
-          limit={limit}
-          onPageChange={(p) => setPage(p)}
+      <FilterTabs
+        value={filter}
+        onChange={(value) => {
+          setFilter(value);
+          page.setPage(1);
+        }}
+        options={[
+          { value: "all", label: "Everyone", count: users.length },
+          { value: "CUSTOMER", label: "Customers" },
+          { value: "VENDOR", label: "Vendors" },
+          { value: "ADMIN", label: "Administrators" },
+        ]}
+      />
+      <div className="work-toolbar">
+        <span className="work-secondary">
+          {filtered.length} {filtered.length === 1 ? "account" : "accounts"}
+        </span>
+        <WorkSearch
+          value={search}
+          onChange={(value) => {
+            setSearch(value);
+            page.setPage(1);
+          }}
+          placeholder="Find a name or email"
         />
-      )}
-    </div>
+      </div>
+      <DataTable
+        caption="People"
+        rows={page.rows}
+        columns={[
+          {
+            label: "Person",
+            render: (row) => <Person name={row.name} email={row.email} />,
+          },
+          { label: "Role", render: (row) => <Status value={row.role} /> },
+          {
+            label: "Joined",
+            className: "hide-small",
+            render: (row) => (
+              <span className="work-secondary">{shortDate(row.createdAt)}</span>
+            ),
+          },
+          {
+            label: "Account",
+            className: "right",
+            render: (row) => (
+              <button
+                className="icon-button"
+                aria-label={`Manage ${row.name}`}
+                onClick={() => open(row)}
+              >
+                <ArrowRight size={17} />
+              </button>
+            ),
+          },
+        ]}
+      />
+      <Pagination {...page} />
+      <WorkDrawer
+        open={!!selected}
+        onClose={() => !busy && setSelected(null)}
+        title="Account details"
+      >
+        {selected && (
+          <div className="work-form">
+            <Person name={selected.name} email={selected.email} />
+            <dl className="work-product-facts">
+              <div>
+                <dt>Joined</dt>
+                <dd>{shortDate(selected.createdAt)}</dd>
+              </div>
+              <div>
+                <dt>Account ID</dt>
+                <dd>{selected.id}</dd>
+              </div>
+            </dl>
+            <FormeSelect
+              label="Account role"
+              disabled={selected.id === user.id}
+              value={role}
+              onValueChange={setRole}
+              options={[
+                { value: "CUSTOMER", label: "Customer" },
+                { value: "VENDOR", label: "Vendor" },
+                { value: "ADMIN", label: "Administrator" },
+              ]}
+            />
+            <p className="work-drawer-note">
+              {selected.id === user.id
+                ? "You’re signed in with this account. Your administrator role is protected."
+                : role === "ADMIN"
+                  ? "Administrators can manage all users, products, orders and store settings."
+                  : role === "VENDOR"
+                    ? "Vendors can manage their own products and fulfil eligible orders."
+                    : "Customers can shop, save addresses and manage their own orders."}
+            </p>
+            {error && (
+              <p className="work-error" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="work-form-actions">
+              <button
+                className="work-button secondary"
+                disabled={busy}
+                onClick={() => setSelected(null)}
+              >
+                Close
+              </button>
+              <button
+                className="work-button"
+                disabled={
+                  busy || selected.id === user.id || role === selected.role
+                }
+                onClick={save}
+              >
+                {busy ? "Saving…" : "Save role"}
+              </button>
+            </div>
+          </div>
+        )}
+      </WorkDrawer>
+    </>
   );
 };

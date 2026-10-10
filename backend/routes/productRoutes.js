@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 
-
 const {
   createProduct,
   getProducts,
@@ -10,7 +9,8 @@ const {
   getProduct,
   updateProduct,
   deleteProduct,
-  increaseProductStock
+  increaseProductStock,
+  restoreProduct,
 } = require("../controllers/productController");
 const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
@@ -19,7 +19,7 @@ const {
   createProductSchema,
   updateProductSchema,
   productQuerySchema,
-  stockUpdateSchema
+  stockUpdateSchema,
 } = require("../validations/schemas");
 
 // Public Routes
@@ -28,50 +28,46 @@ router.get(
   "/my-products/out-of-stock",
   protect,
   authorize("VENDOR"),
-  getOutOfStockProducts
+  getOutOfStockProducts,
 );
 router.get(
-    "/my-products",
-    protect,
-    authorize("VENDOR", "ADMIN"),
-    getMyProducts
+  "/my-products",
+  protect,
+  authorize("VENDOR", "ADMIN"),
+  getMyProducts,
 );
 
 router.get("/:id", getProduct);
 
 // Vendor & Admin Routes
 router.post(
-    "/",
-    protect,
-    authorize("VENDOR"),
-    validate(createProductSchema), createProduct
+  "/",
+  protect,
+  authorize("VENDOR"),
+  validate(createProductSchema),
+  createProduct,
 );
 
 // Owner or Admin Routes
 router.put(
-    "/:id",
-    protect,
-    authorize("ADMIN", "VENDOR"),
-    validate(updateProductSchema), updateProduct
+  "/:id",
+  protect,
+  authorize("ADMIN", "VENDOR"),
+  validate(updateProductSchema),
+  updateProduct,
 );
-router.delete(
-    "/:id",
-    protect,
-    authorize("ADMIN", "VENDOR"),
-    deleteProduct
+router.delete("/:id", protect, authorize("ADMIN", "VENDOR"), deleteProduct);
+router.patch(
+  "/:id/restore",
+  protect,
+  authorize("VENDOR", "ADMIN"),
+  restoreProduct,
 );
 router.patch(
   "/:id/stock",
   protect,
   authorize("VENDOR"),
   validate(stockUpdateSchema),
-  increaseProductStock
+  increaseProductStock,
 );
 module.exports = router;
-
-
-
-
-
-
-

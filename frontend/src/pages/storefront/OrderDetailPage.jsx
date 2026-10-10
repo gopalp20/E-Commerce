@@ -1,214 +1,269 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ordersApi } from '../../api/orders';
-import { OrderStatusTimeline } from '../../components/customer/OrderStatusTimeline';
-import { Badge } from '../../components/common/Badge';
-import { Button } from '../../components/common/Button';
-import { ConfirmDialog } from '../../components/common/ConfirmDialog';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { useToast } from '../../context/ToastContext';
+import { useState, useEffect } from "react";
+import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import { Check, ArrowRight } from "lucide-react";
+import { ordersApi } from "../../api/orders";
+import { useAuth } from "../../context/AuthContext";
+import { Drawer, PageState } from "../../components/forme/UI";
 import {
-  ChevronLeft,
-  Calendar,
-  Truck,
-  CreditCard,
-  MapPin,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-} from 'lucide-react';
-
+  money,
+  dateLabel,
+  orderNumber,
+  productImage,
+  titleCase,
+} from "../../lib/format";
+const steps = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED"];
 export const OrderDetailPage = () => {
-  const { id } = useParams();
-  const [order, setOrder] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const toast = useToast();
-
-  const fetchOrder = async () => {
-    try {
-      setIsLoading(true);
-      const res = await ordersApi.getOrderById(id);
-      if (res.order) {
-        setOrder(res.order);
-      }
-    } catch (err) {
-      console.error('Failed to load order', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  const { id } = useParams(),
+    location = useLocation();
+  const { user, isLoading: authLoading } = useAuth();
+  const [order, setOrder] = useState(null),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [retry, setRetry] = useState(0),
+    [confirm, setConfirm] = useState(false),
+    [busy, setBusy] = useState(false),
+    [cancelError, setCancelError] = useState("");
   useEffect(() => {
-    fetchOrder();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [id]);
-
-  const handleCancelOrder = async () => {
+    if (!user) return;
+    let active = true;
+    setLoading(true);
+    setError("");
+    ordersApi
+      .getOrderById(id)
+      .then((data) => {
+        if (active) setOrder(data.order);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id, user, retry]);
+  const cancel = async () => {
+    setBusy(true);
+    setCancelError("");
     try {
-      setIsCancelling(true);
-      await ordersApi.cancelOrder(id);
-      toast.success('Order has been cancelled.');
-      setCancelModalOpen(false);
-      fetchOrder();
-    } catch (err) {
-      toast.error(err.message || 'Failed to cancel order.');
+      const data = await ordersApi.cancelOrder(id);
+      setOrder(data.order);
+      setConfirm(false);
+    } catch (e) {
+      setCancelError(e.message);
     } finally {
-      setIsCancelling(false);
+      setBusy(false);
     }
   };
-
-  if (isLoading) {
+  if (authLoading) return <PageState loading />;
+  if (!user)
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <LoadingSpinner size="lg" />
-        <p className="text-xs text-slate-500">Retrieving order shipment information...</p>
-      </div>
-    );
-  }
-
-  if (!order) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-20 text-center">
-        <h2 className="text-xl font-bold text-slate-800">Order Not Found</h2>
-        <p className="text-xs text-slate-500 mt-1">Order #{id} does not exist in your account.</p>
-        <Link to="/orders" className="mt-4 inline-block text-xs font-bold text-indigo-600">
-          Back to All Orders
-        </Link>
-      </div>
-    );
-  }
-
-  const isPending = order.status === 'PENDING';
-
-  return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
-      {/* Top back navigation & Header */}
-      <div>
-        <Link
-          to="/orders"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors mb-3"
-        >
-          <ChevronLeft className="w-4 h-4" /> Back to My Orders
-        </Link>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Order #{order.id}
-              </h1>
-              <Badge status={order.status} showDot size="md" />
-            </div>
-            <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5" />
-              Placed on {new Date(order.createdAt).toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-3">
-            {isPending && (
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => setCancelModalOpen(true)}
-              >
-                Cancel Order
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={FileText}
-              onClick={() => window.print()}
-            >
-              Print Invoice
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Visual Timeline */}
-      <OrderStatusTimeline
-        status={order.status}
-        deliveredAt={order.deliveredAt}
-        createdAt={order.createdAt}
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: { pathname: location.pathname } }}
       />
-
-      <div className="grid grid-cols-1 gap-8 items-start">
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-subtle p-6 space-y-4">
-          <h3 className="text-base font-bold text-slate-900 pb-3 border-b border-slate-100">
-            Purchased Items ({order.items?.length || 0})
-          </h3>
-
-          <div className="divide-y divide-slate-100">
-            {order.items?.map((item) => (
-              <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex items-center gap-4">
-                <img
-                  src={item.product?.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=200&q=80'}
-                  alt=""
-                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-slate-100 flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block">
-                    Marketplace item
-                  </span>
-                  <Link
-                    to={`/products/${item.productId}`}
-                    className="font-bold text-sm text-slate-900 hover:text-indigo-600 transition-colors block truncate"
+    );
+  if (loading) return <PageState loading />;
+  if (error || !order)
+    return (
+      <PageState
+        title="We couldn't find your order."
+        description={error}
+        retry={() => setRetry(retry + 1)}
+      >
+        <Link to="/orders" className="arrow-link">
+          Back to your orders
+        </Link>
+      </PageState>
+    );
+  const address = order.shippingAddress,
+    cancelled = order.status === "CANCELLED";
+  return (
+    <div className="wrap">
+      <div className="breadcrumbs">
+        <Link to="/orders">Your orders</Link>
+        <span>/</span>
+        <span>{orderNumber(order.id)}</span>
+      </div>
+      <header className="order-success">
+        {location.state?.justPlaced && !cancelled && (
+          <div className="success-icon">
+            <Check size={25} />
+          </div>
+        )}
+        <p className="eyebrow">
+          {orderNumber(order.id)} · {dateLabel(order.createdAt)}
+        </p>
+        <h1>
+          {cancelled
+            ? "A change of plans."
+            : location.state?.justPlaced
+              ? "Good things are coming."
+              : "Your order, at a glance."}
+        </h1>
+        <p>
+          {cancelled
+            ? "Your order has been cancelled. No payment is due."
+            : "Your order is saved. You can come back here for every detail."}
+          <br />
+          This is a demo order. No payment or physical delivery will take place.
+        </p>
+      </header>
+      <div className="order-detail-layout">
+        <div>
+          <section className="order-status-panel">
+            <header>
+              <strong>Order status</strong>
+              <span className={`status-badge ${cancelled ? "cancelled" : ""}`}>
+                {titleCase(order.status)}
+              </span>
+            </header>
+            {cancelled ? (
+              <p style={{ fontSize: 13 }}>
+                The items have been returned to available stock.
+              </p>
+            ) : (
+              <ol className="status-track">
+                {steps.map((step, index) => (
+                  <li
+                    key={step}
+                    className={`status-step ${index <= steps.indexOf(order.status) ? "done" : ""}`}
+                    aria-current={step === order.status ? "step" : undefined}
                   >
-                    {item.product?.name}
-                  </Link>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Qty: {item.quantity} × ${Number(item.price).toFixed(2)}
+                    <i />
+                    {titleCase(step)}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+          <div>
+            {order.items.map((item) => (
+              <article className="bag-item" key={item.id}>
+                <img
+                  className="bag-item-image"
+                  src={item.productImage || productImage(item.product)}
+                  alt=""
+                />
+                <div className="bag-item-info">
+                  <h2>{item.productName || item.product?.name}</h2>
+                  <p>
+                    Quantity {item.quantity} · {money(item.price)} each
                   </p>
+                  <Link
+                    to={`/products/${item.productId}${order.status === "DELIVERED" ? "#reviews" : ""}`}
+                    className="arrow-link"
+                  >
+                    {order.status === "DELIVERED"
+                      ? "Review this item"
+                      : "View item"}
+                    <ArrowRight size={14} />
+                  </Link>
                 </div>
-                <div className="text-right">
-                  <span className="font-extrabold text-sm text-slate-900">
-                    ${(Number(item.price) * item.quantity).toFixed(2)}
-                  </span>
-                </div>
-              </div>
+                <strong className="bag-item-total">
+                  {money(Number(item.price) * item.quantity)}
+                </strong>
+              </article>
             ))}
           </div>
-
-          {/* Pricing summary */}
-          <div className="pt-4 border-t border-slate-100 space-y-2 text-xs">
-            <div className="flex justify-between text-slate-600">
-              <span>Items Total</span>
-              <span className="font-semibold text-slate-900">
-                ${Number(order.totalAmount).toFixed(2)}
-              </span>
-            </div>
-            <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline">
-              <span className="text-sm font-bold text-slate-900">Grand Total</span>
-              <span className="text-xl font-black text-slate-900">
-                ${Number(order.totalAmount).toFixed(2)}
-              </span>
-            </div>
+          <div className="order-address">
+            <h3>Delivery details</h3>
+            {address ? (
+              <address style={{ fontStyle: "normal" }}>
+                {address.name}
+                <br />
+                {address.line1}
+                <br />
+                {address.line2 && (
+                  <>
+                    {address.line2}
+                    <br />
+                  </>
+                )}
+                {address.city}, {address.state} {address.postalCode}
+                <br />
+                {address.country}
+                <br />
+                {address.phone}
+              </address>
+            ) : (
+              <p>No address was recorded for this earlier order.</p>
+            )}
+            <p style={{ marginTop: 14 }}>
+              {titleCase(order.deliveryMethod)} delivery · Pay on delivery
+            </p>
           </div>
         </div>
-
+        <aside className="order-summary">
+          <p className="eyebrow">THE DETAILS</p>
+          <h2>Order summary</h2>
+          <div className="summary-line">
+            <span>Subtotal</span>
+            <span>{money(order.subtotal)}</span>
+          </div>
+          <div className="summary-line">
+            <span>Delivery</span>
+            <span>
+              {Number(order.shippingAmount)
+                ? money(order.shippingAmount)
+                : "Free"}
+            </span>
+          </div>
+          <div className="summary-line total">
+            <span>Total</span>
+            <strong>{money(order.totalAmount)}</strong>
+          </div>
+          <p className="checkout-terms">
+            {cancelled
+              ? "Cancelled · Nothing to pay"
+              : "Pay on delivery · No payment collected"}
+          </p>
+          <Link to="/products" className="store-button full">
+            Keep exploring
+            <ArrowRight size={16} />
+          </Link>
+          {["PENDING", "CONFIRMED"].includes(order.status) && (
+            <button
+              className="arrow-link"
+              style={{ marginTop: 22 }}
+              onClick={() => setConfirm(true)}
+            >
+              Cancel this order
+            </button>
+          )}
+        </aside>
       </div>
-
-      {/* Cancel Order Confirmation */}
-      <ConfirmDialog
-        isOpen={cancelModalOpen}
-        onClose={() => setCancelModalOpen(false)}
-        onConfirm={handleCancelOrder}
-        title="Cancel Order"
-        message="Are you sure you want to cancel this order? It is currently pending merchant dispatch."
-        confirmText="Confirm Cancellation"
-        isDanger
-        isLoading={isCancelling}
-      />
+      <Drawer
+        title="Cancel this order?"
+        open={confirm}
+        onClose={() => {
+          if (!busy) setConfirm(false);
+        }}
+      >
+        <p style={{ fontSize: 14, lineHeight: 1.8 }}>
+          All items in {orderNumber(order.id)} will be cancelled and returned to
+          stock. You can always place a new order later.
+        </p>
+        {cancelError && (
+          <p className="error-message" role="alert">
+            {cancelError}
+          </p>
+        )}
+        <div className="confirmation-actions">
+          <button
+            className="store-button secondary"
+            disabled={busy}
+            onClick={() => setConfirm(false)}
+          >
+            Keep order
+          </button>
+          <button className="store-button" disabled={busy} onClick={cancel}>
+            {busy ? "Cancelling…" : "Yes, cancel order"}
+          </button>
+        </div>
+      </Drawer>
     </div>
   );
 };

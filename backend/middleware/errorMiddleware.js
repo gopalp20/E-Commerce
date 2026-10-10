@@ -9,6 +9,13 @@ const notFound = (req, res, next) => {
 const globalErrorHandler = (error, req, res, next) => {
   let statusCode = error.statusCode || 500;
   let message = error.message || "Internal Server Error";
+  if (
+    error.type === "entity.too.large" &&
+    req.originalUrl.startsWith("/api/media/")
+  ) {
+    statusCode = 413;
+    message = "Choose a photo up to 8 MB.";
+  }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
