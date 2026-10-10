@@ -2,21 +2,19 @@
 
 ## Start here
 
-FORME is a working local multi-vendor e-commerce college project. The submission source contains the React frontend, Express API, PostgreSQL migrations, seed catalogue, tests, local product photos and project documentation. Orders and reviews are real database records; cash-on-delivery is a demo payment choice, not a payment integration.
+FORME is a multi-vendor e-commerce demo with a React frontend, Express API and Neon PostgreSQL database. Cash-on-delivery orders are persisted records, not a payment or courier integration.
 
-1. Extract the source ZIP to a normal folder on your computer.
-2. Install Node.js 22.12 or newer (verified here with the installed Node runtime). Internet is required for the first dependency installation.
-3. In that folder run `npm run setup`, then `npm run dev`.
-4. Wait for **FORME is ready**, then open **http://127.0.0.1:5173**.
-5. Keep that terminal running. Control-C stops the app and database; starting again preserves your records.
+1. Install Node.js 22.12+ and open the project root.
+2. Run `npm run setup` (or `npm.cmd run setup` on Windows).
+3. Copy `backend/.env.example` to `backend/.env` and enter your Neon DATABASE_URL and private JWT_SECRET. Existing copies should replace the local database URL in their actual environment file. Keep PORT=5050 for the default API port.
+4. Run `npm run db:setup` once for migrations and demo accounts, then `npm run dev`.
+5. Open **http://127.0.0.1:5173** when the launcher reports ready. Keep the terminal open. Later starts only need `npm run dev`.
 
-Do not copy an old `.env` into a fresh submission. The launcher creates local credentials and a database automatically. The example environment files are reference templates, not files you must copy for the local launcher. The ZIP excludes passwords, database files, local uploads from the developer's store and Git authentication settings. The clean seed contains six products, four categories and four demo accounts; it does not invent orders or reviews.
-
-Tested host: macOS Apple Silicon. The embedded PostgreSQL package includes platform-specific binaries, but Windows/Linux and physical mobile devices have not been exercised here. Run setup and the walkthrough on the presentation machine before presenting. On restricted lab machines, install dependencies ahead of time.
+Startup uses Neon only and never automatically changes the shared database schema or seed data. After future schema updates, explicitly run `npm run db:migrate`. All computers pointing to the same Neon database see the same records. Existing local records are not transferred automatically. Keep credentials out of Git and use an independent test branch for integration tests.
 
 ## Accounts
 
-Use the role buttons on the local sign-in screen or enter these details. All four local demo accounts use **FormeDemo2026!**.
+Use the role buttons on the sign-in screen or enter these details. All four newly seeded demo accounts use **FormeDemo2026!**.
 
 | Role | Email | What to demonstrate |
 | --- | --- | --- |
@@ -55,7 +53,7 @@ Sign in as admin. Show Products, Orders, Reviews and Reports scoped by vendor. I
 
 ### 6. Reliability (1 minute)
 
-Create another small order and cancel it before shipment. Explain and show stock returning. Run `npm test` in another terminal while the store is running. The suite uses a separate test database and tests competing buyers, repeat checkout/cancellation, permissions, addresses, reviews, uploads, saved items and catalogue filters.
+Create another small order and cancel it before shipment. Explain and show stock returning. Set TEST_DATABASE_URL to a separate Neon test branch, then run `npm test`. The suite uses that explicit test database and tests competing buyers, repeat checkout/cancellation, permissions, addresses, reviews, uploads, saved items and catalogue filters.
 
 ## Useful presentation answers
 
@@ -73,9 +71,9 @@ Create another small order and cancel it before shipment. Explain and show stock
 | Situation | What to do |
 | --- | --- |
 | Port already in use | Close the previous FORME terminal using Control-C. The launcher never kills another application's process. |
-| Need a second independent copy | On its first start, set FORME_DB_PORT, FORME_API_PORT and FORME_WEB_PORT to unused, different ports. Example on macOS/Linux: `FORME_DB_PORT=55433 FORME_API_PORT=5052 FORME_WEB_PORT=5175 npm run dev`. Keep using its saved database port on later starts. |
-| API/web port conflicts on later starts | Set only FORME_API_PORT and/or FORME_WEB_PORT. The database port is stored in that copy's `.local/database.json`. |
-| Launcher refuses the environment | It has detected a database URL outside that copy's local database. Keep deployment credentials in a separate environment; do not overwrite working local data. |
+| Need independent demo data | Use a separate Neon branch/database and configure its DATABASE_URL. For another app copy on the same computer, choose unused FORME_API_PORT and FORME_WEB_PORT values. |
+| API/web port conflicts | Change PORT / FORME_API_PORT and/or FORME_WEB_PORT. The UI proxy follows the selected API port. |
+| Launcher refuses the environment | Set DATABASE_URL to your Neon PostgreSQL URL with sslmode=require, and set JWT_SECRET. Local database URLs are no longer accepted. |
 | Login fails after switching project copies | Each origin has its own account session. Sign out and sign back in on the intended port. |
 | A review button is unavailable | Confirm that this customer owns a delivered order for this product. |
 | A vendor cannot update an order | Check product ownership and whether the order contains products from multiple sellers; an admin handles mixed orders. |
@@ -83,7 +81,7 @@ Create another small order and cancel it before shipment. Explain and show stock
 
 ## Data and boundaries
 
-Keep `.local/postgres`, `.local/database.json`, `backend/.env` and `backend/.local/product-media` together for a local backup while the app is stopped. Do not include these private runtime folders in a source submission. The archive can always recreate the clean seeded demo with the setup commands.
+Back up the Neon database and `backend/.local/product-media` (or MEDIA_DIRECTORY). Uploaded photos remain on the API computer; sharing Neon does not share those files. Preserve old local database folders if you may need to export their records later. Keep `.env` and uploaded private files out of source archives.
 
 Implemented scope: original multi-vendor handoff plus saved addresses, photo upload/gallery/zoom, specifications, review moderation, saved items, richer discovery, per-vendor admin filtering and motion/accessibility improvements.
 

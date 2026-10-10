@@ -1,6 +1,6 @@
 # FORME frontend
 
-React 19 and Vite storefront, customer account and seller/admin workspaces. Start the complete project from the repository root with `npm run setup` and `npm run dev`; see the [main README](../README.md) and [demo guide](../docs/DEMO-GUIDE.md).
+React 19 and Vite storefront, customer account and seller/admin workspaces. Start the complete project from the repository root with `npm run setup`, a configured Neon `backend/.env`, one-time `npm run db:setup`, and `npm run dev`; see the [main README](../README.md) and [demo guide](../docs/DEMO-GUIDE.md).
 
 The dev server proxies `/api` to the local Express API (port 5050 by default; `FORME_API_PORT` overrides it). Set `VITE_API_URL` only when deliberately using another API environment. The browser normally uses one origin for UI, API and uploaded media.
 

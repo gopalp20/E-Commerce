@@ -4,16 +4,27 @@ A small multi-vendor store for home, workspace and everyday objects. Built with 
 
 ## Open the project
 
-Requirements: Node.js 22.12+ and npm. Fonts and seed photographs are served locally after setup. The bundled development database removes the need to install PostgreSQL separately. Verified on this Mac; the embedded database package supplies platform-specific binaries.
+Requirements: Node.js 22.12+ and npm, plus a Neon PostgreSQL database. Fonts and seed photographs are served locally after dependency installation.
+
+1. Run `npm run setup` to install locked dependencies and generate Prisma.
+2. Copy `backend/.env.example` to `backend/.env`. Set `DATABASE_URL` to your Neon connection string (including `sslmode=require`) and set a private `JWT_SECRET`. Keep `PORT=5050` for the default API port. Existing installations should update their actual `.env`, not the example file.
+3. Run `npm run db:setup` once to apply migrations and create the demo catalogue/accounts. This explicitly adds demo users to the configured Neon database and preserves existing matching records. For an existing database where you only want migrations, use `npm run db:migrate`; `npm run db:seed` separately adds the demo data. Never use database reset to fix migration errors on an existing database.
+4. Run `npm run dev`.
 
 ```sh
-npm run setup   # first run only: install the locked dependencies and generate Prisma
-npm run dev     # start local PostgreSQL, apply migrations, seed if needed, start API + UI
+npm run setup       # first installation / dependency changes
+# Configure backend/.env with your own Neon URL and JWT secret.
+npm run db:setup    # first database setup: migrations + demo accounts
+npm run dev         # every subsequent start: API + frontend only
 ```
 
-Open **http://127.0.0.1:5173**. API: `127.0.0.1:5050`; PostgreSQL: `127.0.0.1:55432`. Press Control-C in that terminal to stop the services. The launcher verifies the page and proxied API before reporting ready. If a port is occupied, it stops with a message rather than terminating another process. A fresh second copy can use `FORME_DB_PORT`, `FORME_API_PORT` and `FORME_WEB_PORT`; see the demo guide.
+On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`. Generate a private JWT secret with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` and save it only in your environment file.
 
-Local data persists in `.local/postgres`. A private database password and JWT secret are generated automatically. `.local/` and `backend/.env` are ignored by Git. The launcher refuses to migrate or seed a hosted database. Do not replace these values with the credentials previously shared in chat; those shared credentials should be rotated before future use.
+Open **http://127.0.0.1:5173**. API: `127.0.0.1:5050` by default. The API port follows `PORT` in your environment; `FORME_API_PORT` and `FORME_WEB_PORT` can override the API and frontend ports. The frontend proxy follows the selected API port automatically. The launcher verifies the page and proxied API before reporting ready and refuses occupied ports without terminating other applications. Control-C stops the app; Neon keeps the data.
+
+**Neon is the only application database.** Startup does not launch PostgreSQL, generate/replace `.env`, or automatically migrate/seed a shared database. Internet access is required while using the app. Computers using the same Neon database share users, products and orders. Old `.local/postgres` folders are left untouched; their records are not automatically copied to Neon. `backend/.env` stays ignored by Git. Use fresh credentials rather than secrets previously shared in chat.
+
+Product uploads still live on the API machine's filesystem. Sharing a Neon database does not share uploaded image files between computers; use one shared API with persistent media storage when hosting the app.
 
 ## Try the shopping flow
 
@@ -56,15 +67,15 @@ The storefront does not keep a guest bag. It carries the selected product throug
 
 ## Verification
 
-With `npm run dev` running:
+Set `TEST_DATABASE_URL` in `backend/.env` to an independent Neon test branch/database before running the full suite. It must differ from the application database; direct/pooler aliases of the same Neon endpoint are rejected. Tests apply migrations and clean up their own fixtures on that test target. The frontend and backend unit/configuration tests need no database: `npm run test:unit`.
 
 ```sh
-npm test        # 3 launcher + 4 backend unit + 47 integration + 6 frontend tests
+npm test        # includes integration tests; requires TEST_DATABASE_URL
 npm run build   # production frontend bundle
 npm run lint    # frontend lint; existing and effect/fast-refresh warnings are documented
 ```
 
-Integration tests are restricted to loopback PostgreSQL and use the separate `forme_test` database. They create their own records and remove only those records. They never reset the store database.
+Integration tests require an explicit test target and never reset the store database. Do not set TEST_DATABASE_URL to a database holding real customer records.
 
 For the presentation, start with the [demo guide](docs/DEMO-GUIDE.md) and [architecture/ER reference](DATA_FLOW_AND_ERD.md).
 
@@ -80,7 +91,7 @@ See [verification notes](docs/VERIFICATION.md), [design direction](docs/FORME-DE
 - `backend/routes/mediaRoutes.js`: authenticated image uploads and public image serving.
 - `backend/services/productGalleryService.js`: ordered galleries, covers and upload ownership.
 - `backend/services/checkoutService.js`: stock, delivery totals, checkout and order transitions.
-- `backend/prisma/`: schema, additive migrations and repeatable local seed.
+- `backend/prisma/`: schema, additive migrations and explicit demo seed.
 - `scripts/dev.mjs`: local service launcher.
 
 ## Product photos

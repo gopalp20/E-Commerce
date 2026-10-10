@@ -13,12 +13,12 @@ require("dotenv").config({
   path: path.resolve(__dirname, "../../.env"),
   quiet: true,
 });
-// Always use the isolated local test database, never the catalogue or a hosted database.
-const url = new URL(process.env.DATABASE_URL);
-if (!["localhost", "127.0.0.1"].includes(url.hostname))
-  throw new Error("Tests require the local database.");
-url.pathname = "/forme_test";
-process.env.DATABASE_URL = url.toString();
+// Never infer a test target from the shared catalogue connection.
+const { testDatabaseUrl } = require("../databaseTarget");
+process.env.DATABASE_URL = testDatabaseUrl(
+  process.env.DATABASE_URL,
+  process.env.TEST_DATABASE_URL,
+);
 process.env.JWT_SECRET = "forme-test-only-secret";
 const prisma = require("../../config/prisma");
 const app = require("../../app");

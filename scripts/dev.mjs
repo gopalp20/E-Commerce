@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import { assertLocalDatabase, localPorts } from "./local-config.mjs";
+import { loadEnvironment } from "./environment.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const children = new Set();
 let stopping = false;
@@ -27,11 +27,6 @@ function run(command, args, cwd, options = {}) {
   });
   return child;
 }
-async function finished(child) {
-  const code = await new Promise((resolve) => child.once("exit", resolve));
-  if (code !== 0)
-    throw new Error("A setup command failed. See the output above.");
-}
 async function stop(code = 0) {
   if (stopping) return;
   stopping = true;
@@ -47,72 +42,12 @@ try {
     !existsSync(path.join(root, "frontend/node_modules"))
   )
     throw new Error("Run npm run setup once before starting FORME.");
-  const configFile = path.join(root, ".local/database.json");
-  const storedDbPort = existsSync(configFile)
-    ? JSON.parse(readFileSync(configFile, "utf8")).port
-    : undefined;
-  const ports = localPorts(process.env, storedDbPort);
-  const { default: dotenv } =
-    await import("../backend/node_modules/dotenv/lib/main.js");
-  const envPath = path.join(root, "backend/.env");
-  // Validate an existing environment before starting or modifying any database.
-  if (existsSync(envPath))
-    assertLocalDatabase(
-      dotenv.parse(readFileSync(envPath)).DATABASE_URL,
-      ports.db,
-    );
+  const { ports, env } = await loadEnvironment(root);
   for (const port of Object.values(ports))
     if (await listening(port))
       throw new Error(
         `Port ${port} is already in use. Stop the previous FORME session before starting another.`,
       );
-  const db = run(
-    process.execPath,
-    ["scripts/local-db.mjs"],
-    path.join(root, "backend"),
-    { stdio: ["inherit", "pipe", "inherit"] },
-  );
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error("Local database startup timed out.")),
-      60000,
-    );
-    db.once("exit", () => {
-      clearTimeout(timeout);
-      reject(new Error("Local database could not start."));
-    });
-    let output = "";
-    db.stdout.on("data", (chunk) => {
-      process.stdout.write(chunk);
-      output += chunk.toString();
-      if (output.includes("FORME PostgreSQL is ready")) {
-        clearTimeout(timeout);
-        resolve();
-      }
-    });
-  });
-  // The launcher must never migrate or seed an unrelated hosted database.
-  const localEnv = dotenv.parse(readFileSync(envPath));
-  assertLocalDatabase(localEnv.DATABASE_URL, ports.db);
-  const env = {
-    ...process.env,
-    ...localEnv,
-    PORT: String(ports.api),
-    HOST: "127.0.0.1",
-  };
-  await finished(
-    run(
-      process.execPath,
-      ["node_modules/prisma/build/index.js", "migrate", "deploy"],
-      path.join(root, "backend"),
-      { env },
-    ),
-  );
-  await finished(
-    run(process.execPath, ["prisma/seed.js"], path.join(root, "backend"), {
-      env,
-    }),
-  );
   const api = run(
     process.execPath,
     ["--watch", "server.js"],
@@ -132,7 +67,7 @@ try {
     path.join(root, "frontend"),
     { env: { ...process.env, FORME_API_PORT: String(ports.api) } },
   );
-  for (const child of [db, api, web])
+  for (const child of [api, web])
     child.once("exit", () => {
       if (!stopping) stop(1);
     });
@@ -163,12 +98,12 @@ try {
     }
     if (Date.now() > deadline)
       throw new Error(
-        "The store did not become ready. See the service output above.",
+        "The store did not become ready. Check the service output and run npm run db:setup once for a new Neon database.",
       );
     await delay(250);
   }
   console.log(
-    `\nFORME is ready → http://127.0.0.1:${ports.web}\nAPI and database connection verified.\nPress Control-C to stop the store and its local database.\n`,
+    `\nFORME is ready → http://127.0.0.1:${ports.web}\nAPI and Neon database connection verified.\nPress Control-C to stop the API and frontend. Your Neon data stays saved.\n`,
   );
 } catch (error) {
   console.error(error.message);

@@ -1,5 +1,11 @@
 # FORME — verification
 
+## Neon startup update — 10 October 2026
+
+62 automated tests pass: 3 launcher configuration tests, 6 backend unit tests, 47 API/PostgreSQL integration tests and 6 frontend tests. The production frontend build and `git diff --check` pass. Configuration tests cover direct and pooled Neon URLs, TLS requirements, ports and rejection of the application database as a test target. Starting with the old local database configuration fails immediately with instructions to configure Neon.
+
+The integration suite ran against an explicitly selected, isolated local `forme_test` database. A live Neon connection, migrations and seeding were not exercised in this pass. They require the operator's private `backend/.env` and the explicit `npm run db:setup` command. Startup no longer creates a database, replaces environment files or seeds automatically. Earlier sections below record the previous bundled-database implementation and its checks.
+
 ## Submission-readiness pass - 10 October 2026
 
 **Latest result: 60 automated tests pass; production frontend build passes; lint has zero errors and 22 warnings; whitespace/format checks pass.** Counts: 3 launcher configuration tests, 4 backend status tests, 47 API/PostgreSQL integration tests and 6 frontend geometry/report tests. Both the live checkout and a newly installed temporary source copy passed the full suite and build. The copy was installed using `npm run setup` with no existing node_modules, environment file or database.

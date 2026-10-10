@@ -7,9 +7,14 @@
     "setup": "npm ci --prefix backend && npm ci --prefix frontend && node backend/node_modules/prisma/build/index.js generate --schema backend/prisma/schema.prisma",
     "dev": "node scripts/dev.mjs",
     "build": "npm run build --prefix frontend",
-    "test": "node --test scripts/*.test.mjs && npm test --prefix backend && npm run test:integration --prefix backend && npm test --prefix frontend",
+    "test": "npm run test:unit && npm run test:integration",
     "lint": "npm run lint --prefix frontend",
-    "format": "node frontend/node_modules/prettier/bin/prettier.cjs --write frontend/src/pages/storefront frontend/src/components/forme frontend/src/index.css backend/services/checkoutService.js"
+    "format": "node frontend/node_modules/prettier/bin/prettier.cjs --write frontend/src/pages/storefront frontend/src/components/forme frontend/src/index.css backend/services/checkoutService.js",
+    "db:setup": "node scripts/database.mjs setup",
+    "db:migrate": "node scripts/database.mjs migrate",
+    "db:seed": "node scripts/database.mjs seed",
+    "test:unit": "node --test scripts/*.test.mjs && npm test --prefix backend && npm test --prefix frontend",
+    "test:integration": "npm run test:integration --prefix backend"
   },
   "engines": {
     "node": ">=22.12.0"

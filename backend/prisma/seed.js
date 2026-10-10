@@ -54,12 +54,13 @@ const catalogue = [
   ],
 ];
 async function main() {
-  const url = new URL(process.env.DATABASE_URL);
-  if (
-    !["localhost", "127.0.0.1"].includes(url.hostname) &&
-    process.env.ALLOW_DEMO_SEED !== "yes"
-  )
-    throw new Error("Demo seeding is restricted to a local database.");
+  const { assertNeonDatabase } =
+    await import("../../scripts/runtime-config.mjs");
+  assertNeonDatabase(process.env.DATABASE_URL);
+  if (process.env.ALLOW_DEMO_SEED !== "yes")
+    throw new Error(
+      "Run npm run db:seed to explicitly create the demo accounts in Neon.",
+    );
   const password = await bcrypt.hash("FormeDemo2026!", 10);
   for (const [email, name, role] of [
     ["hello@forme.demo", "Alex Morgan", "CUSTOMER"],

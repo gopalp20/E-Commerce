@@ -94,8 +94,8 @@ Customer cancellation is limited to their own eligible orders. Vendors can fulfi
 | Role-aware browser routes | frontend/src/App.jsx, components/routing/ProtectedRoute.jsx |
 | Customer / operational screens | frontend/src/pages/, frontend/src/components/management/ |
 | Shared controls and motion | frontend/src/components/forme/, frontend/src/index.css |
-| Local installation/startup | package.json, scripts/dev.mjs, scripts/local-config.mjs, backend/scripts/local-db.mjs |
-| Repeatable verification | backend/tests/, frontend/tests/, scripts/local-config.test.mjs |
+| Neon configuration and startup | package.json, scripts/dev.mjs, scripts/runtime-config.mjs, scripts/environment.mjs, scripts/database.mjs |
+| Repeatable verification | backend/tests/, frontend/tests/, scripts/runtime-config.test.mjs |
 
 ## API areas
 
