@@ -1,5 +1,13 @@
 # FORME — verification
 
+## Shared Neon catalogue and real Cloudinary verification — 10 October 2026
+
+The shared Neon database was refreshed at the owner's explicit request after a private, consistent logical backup of its public-table rows and schema metadata. All seven application migrations are applied. The fresh dataset contains four demo accounts (customer, two vendors and admin), twenty active products, four categories and twenty-two Cloudinary photographs. Each seller owns ten products; each category contains five. No orders or reviews were seeded.
+
+Live checks against the configured services passed for all four logins, both sellers' scoped listings, admin product counts, public browsing and delivery of all twenty-two image routes from Cloudinary. A real vendor upload was attached to a draft gallery, then removed. A guest bag request was rejected; an authenticated mixed-vendor checkout persisted the expected INR 1,529 total, and cancellation restored both products' stock. Temporary order, bag, draft and uploaded-image records were removed afterward. Final counts were four users, twenty products, twenty-two media assets, zero orders, zero reviews and zero cart items. The temporary API and other FORME local services are stopped.
+
+The twenty-four unit/configuration tests and production frontend build pass. The catalogue fixture check verifies both vendor/category distribution and the existence of every photo asset. The earlier full integration-suite result below remains separate from this credentialed live verification; the full integration suite was not repeated for this data-only update. Source attribution is recorded in `photo-sources.json`.
+
 ## Cloudinary upload update — 10 October 2026
 
 73 automated tests pass: 3 launcher configuration tests, 14 backend unit tests, 50 API/PostgreSQL integration tests and 6 frontend tests. The production frontend build and `git diff --check` pass.

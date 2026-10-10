@@ -1,58 +1,8 @@
 require("dotenv").config({ quiet: true });
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
+const { catalogue, accounts, categories } = require("./demoCatalogue");
 const prisma = new PrismaClient();
-
-const catalogue = [
-  [
-    "The Sunday Chair",
-    "living",
-    18900,
-    "forme-living.jpg",
-    "A generous seat for slower mornings. Soft rust upholstery, a sculpted back and tapered wooden legs bring a little warmth to your favourite corner. A single lounge chair; side table and accessories are not included.",
-    8,
-  ],
-  [
-    "Halo Table Light",
-    "workspace",
-    3490,
-    "lamp.jpg",
-    "A simple white shade and a warm pool of light. Made for bedside reading, focused evenings and the end of a long day. One table lamp with a fabric shade and a stable base.",
-    18,
-  ],
-  [
-    "Daybreak Cup & Saucer",
-    "objects",
-    890,
-    "cup.jpg",
-    "Your first coffee deserves a good cup. A clean porcelain silhouette, comfortable handle and matching saucer for daily rituals. Includes one cup and one saucer. Hand-wash with care.",
-    32,
-  ],
-  [
-    "The Daily Carry",
-    "everyday",
-    4290,
-    "bag.jpg",
-    "Room for the things that come with you. A warm brown leather bag with simple lines and an easy everyday shape. Includes one bag; naturally occurring differences in leather make each piece individual.",
-    14,
-  ],
-  [
-    "Studio Headphones",
-    "workspace",
-    2990,
-    "headphones.jpg",
-    "Over-ear headphones for a little space of your own. A padded headband and cushioned ear cups make them a companion for your favourite records and focused afternoons. Includes one pair of wired headphones.",
-    20,
-  ],
-  [
-    "The Reading Chair",
-    "living",
-    14900,
-    "forme-studio.jpg",
-    "A dark wood accent chair with green upholstery and a welcoming shape. Set it by a window and make room for an unhurried chapter. Includes one upholstered chair; surrounding furnishings are not included.",
-    6,
-  ],
-];
 async function main() {
   const { assertNeonDatabase } =
     await import("../../scripts/runtime-config.mjs");
@@ -62,57 +12,50 @@ async function main() {
       "Run npm run db:seed to explicitly create the demo accounts in Neon.",
     );
   const password = await bcrypt.hash("FormeDemo2026!", 10);
-  for (const [email, name, role] of [
-    ["hello@forme.demo", "Alex Morgan", "CUSTOMER"],
-    ["studio@forme.demo", "Form & Field", "VENDOR"],
-    ["objects@forme.demo", "Everyday Studio", "VENDOR"],
-    ["admin@forme.demo", "FORME Admin", "ADMIN"],
-  ]) {
-    await prisma.user.upsert({
-      where: { email },
+  const users = {};
+  for (const account of accounts)
+    users[account.email] = await prisma.user.upsert({
+      where: { email: account.email },
       update: {},
-      create: { email, name, role, password },
+      create: { ...account, password },
     });
-  }
-  const vendors = await prisma.user.findMany({
-    where: { email: { in: ["studio@forme.demo", "objects@forme.demo"] } },
-    orderBy: { id: "asc" },
-  });
-  const categories = {};
-  for (const [slug, name] of [
-    ["living", "For the home"],
-    ["objects", "Everyday objects"],
-    ["workspace", "For your workspace"],
-    ["everyday", "On the go"],
-  ]) {
-    categories[slug] = await prisma.category.upsert({
-      where: { slug },
+  const categoryRows = {};
+  for (const category of categories)
+    categoryRows[category.slug] = await prisma.category.upsert({
+      where: { slug: category.slug },
       update: {},
-      create: { slug, name },
+      create: category,
     });
-  }
-  for (const [
-    index,
-    [name, slug, price, image, description, stock],
-  ] of catalogue.entries()) {
-    const vendorId = vendors[index % 2].id;
-    if (await prisma.product.findFirst({ where: { name, vendorId } })) continue;
+  const vendors = [users["studio@forme.demo"], users["objects@forme.demo"]];
+  for (const [index, item] of catalogue.entries()) {
+    const vendorId = vendors[item.vendorIndex].id;
+    if (
+      await prisma.product.findFirst({ where: { name: item.name, vendorId } })
+    )
+      continue;
+    const images = item.photos.map(({ file, alt }, position) => ({
+      url: "/images/" + file,
+      alt,
+      position,
+    }));
     await prisma.product.create({
       data: {
-        name,
-        description,
-        price,
-        stock,
-        imageUrl: "/images/" + image,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        stock: item.stock,
+        specifications: item.specifications,
         status: "ACTIVE",
         vendorId,
-        categoryId: categories[slug].id,
+        categoryId: categoryRows[item.category].id,
+        imageUrl: images[0].url,
+        images: { create: images },
         createdAt: new Date(Date.now() - index * 86400000),
       },
     });
   }
   console.log(
-    "FORME catalogue and four demo accounts are ready. Existing data was preserved.",
+    "FORME: 20 demo products and four accounts are ready. Existing data was preserved.",
   );
 }
 main()

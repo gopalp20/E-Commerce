@@ -36,5 +36,99 @@
     "source": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e",
     "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1100&q=85",
     "note": "Retained the product-image reference from the original project."
+  },
+  {
+    "file": "seed-vase.jpg",
+    "source": "https://unsplash.com/photos/ePUuKfAUwtA",
+    "license": "Unsplash License",
+    "alt": "White ceramic vase"
+  },
+  {
+    "file": "seed-plant.jpg",
+    "source": "https://unsplash.com/photos/t-ht-qk2WKg",
+    "license": "Unsplash License",
+    "alt": "Indoor plant in a white pot"
+  },
+  {
+    "file": "seed-cushions.jpg",
+    "source": "https://unsplash.com/photos/DHwpL_BebpY",
+    "license": "Unsplash License",
+    "alt": "Two throw cushions"
+  },
+  {
+    "file": "seed-bowl.jpg",
+    "source": "https://unsplash.com/photos/Mz__0nr1AM8",
+    "license": "Unsplash License",
+    "alt": "White glaze ceramic bowl"
+  },
+  {
+    "file": "seed-serving-set.jpg",
+    "source": "https://unsplash.com/photos/NLcLjLNUJbY",
+    "license": "Unsplash License",
+    "alt": "Ceramic bottle and two cups"
+  },
+  {
+    "file": "seed-bowl-set.jpg",
+    "source": "https://unsplash.com/photos/SITGdvztUdg",
+    "license": "Unsplash License",
+    "alt": "Five ceramic bowls"
+  },
+  {
+    "file": "seed-candle.jpg",
+    "source": "https://unsplash.com/photos/t1YxoTeDK8g",
+    "license": "Unsplash License",
+    "alt": "White candle"
+  },
+  {
+    "file": "seed-notebook.jpg",
+    "source": "https://unsplash.com/photos/IThpmszqH7Y",
+    "license": "Unsplash License",
+    "alt": "Open notebook"
+  },
+  {
+    "file": "seed-clock.jpg",
+    "source": "https://unsplash.com/photos/Lz-mtHH_kKI",
+    "license": "Unsplash License",
+    "alt": "White alarm clock"
+  },
+  {
+    "file": "seed-tote.jpg",
+    "source": "https://unsplash.com/photos/K9zFCQCJTUE",
+    "license": "Unsplash License",
+    "alt": "Printed everyday tote"
+  },
+  {
+    "file": "seed-bottle.jpg",
+    "source": "https://unsplash.com/photos/svMGVSupipQ",
+    "license": "Unsplash License",
+    "alt": "Reusable water bottle"
+  },
+  {
+    "file": "seed-sunglasses.jpg",
+    "source": "https://unsplash.com/photos/hm5BUrBTa68",
+    "image": "https://images.unsplash.com/photo-1642302789227-a16d8dc7c043?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&dl=t-d-hm5BUrBTa68-unsplash.jpg&w=1200",
+    "license": "Unsplash License",
+    "alt": "Sunglasses on sand"
+  },
+  {
+    "file": "seed-pouch.jpg",
+    "source": "https://unsplash.com/photos/WnC8n76Q584",
+    "image": "https://images.unsplash.com/photo-1749294435693-4f39ec7e0ab2?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&dl=ocult-store-WnC8n76Q584-unsplash.jpg&w=1200",
+    "license": "Unsplash License",
+    "alt": "Leather travel pouch"
+  },
+  {
+    "file": "seed-pouch-side.jpg",
+    "source": "https://unsplash.com/photos/6YO98iqkKGA",
+    "image": "https://images.unsplash.com/photo-1749294435697-386a322bab8d?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&dl=ocult-store-6YO98iqkKGA-unsplash.jpg&w=1200",
+    "license": "Unsplash License",
+    "alt": "Leather pouch alternate view"
+  },
+  {
+    "file": "seed-pouch-detail.jpg",
+    "source": "https://unsplash.com/photos/K78mXNm0zdM",
+    "image": "https://images.unsplash.com/photo-1749294435694-ce3c586591e6?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&dl=ocult-store-K78mXNm0zdM-unsplash.jpg&w=1200",
+    "license": "Unsplash License",
+    "alt": "Leather pouch detail"
   }
 ]

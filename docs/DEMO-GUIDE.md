@@ -25,6 +25,8 @@ Use the role buttons on the sign-in screen or enter these details. All four newl
 
 Sign out before switching roles. New registration always creates a customer. For a fresh vendor approval demonstration, register a sample customer, apply under the account page, then approve from the admin's Vendor requests page. No public registration can request an administrator role.
 
+The fresh catalogue contains twenty products, ten from each seller, across four categories. Its twenty-two product photos include three genuine views of The Travel Pouch. Fresh accounts start without orders or reviews; create a delivered purchase in the walkthrough to demonstrate verified reviews. The shared Neon catalogue refreshed on 10 October 2026 already has its photos in Cloudinary, so another computer using that database does not need to upload or seed them again. A new database uses bundled seed photographs; subsequent vendor uploads use Cloudinary.
+
 ## A 10-12 minute presentation
 
 ### 1. Public browsing (1 minute)
