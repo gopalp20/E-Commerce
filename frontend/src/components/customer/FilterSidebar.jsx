@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { RotateCcw, Filter } from 'lucide-react';
-import { categoriesApi } from '../../api/categories';
+import React, { useState, useEffect } from "react";
+import { RotateCcw, Filter } from "lucide-react";
+import { categoriesApi } from "../../api/categories";
 
 export const FilterSidebar = ({
   filters = {},
   onChange,
   onReset,
-  className = '',
+  className = "",
 }) => {
   const [categories, setCategories] = useState([]);
-  const [minPriceInput, setMinPriceInput] = useState(filters.minPrice || '');
-  const [maxPriceInput, setMaxPriceInput] = useState(filters.maxPrice || '');
+  const [minPriceInput, setMinPriceInput] = useState(filters.minPrice || "");
+  const [maxPriceInput, setMaxPriceInput] = useState(filters.maxPrice || "");
 
   useEffect(() => {
     const fetchCats = async () => {
@@ -25,12 +25,12 @@ export const FilterSidebar = ({
   }, []);
 
   useEffect(() => {
-    setMinPriceInput(filters.minPrice || '');
-    setMaxPriceInput(filters.maxPrice || '');
+    setMinPriceInput(filters.minPrice || "");
+    setMaxPriceInput(filters.maxPrice || "");
   }, [filters.minPrice, filters.maxPrice]);
 
   const handleCategoryClick = (slug) => {
-    const newCat = filters.category === slug ? '' : slug;
+    const newCat = filters.category === slug ? "" : slug;
     onChange({ ...filters, category: newCat, page: 1 });
   };
 
@@ -45,14 +45,13 @@ export const FilterSidebar = ({
   };
 
   const hasActiveFilters = Boolean(
-    filters.category ||
-    filters.minPrice ||
-    filters.maxPrice ||
-    filters.search
+    filters.category || filters.minPrice || filters.maxPrice || filters.search,
   );
 
   return (
-    <aside className={`w-full bg-white rounded-2xl border border-slate-200/90 p-5 shadow-subtle divide-y divide-slate-100 ${className}`}>
+    <aside
+      className={`w-full bg-white rounded-2xl border border-slate-200/90 p-5 shadow-subtle divide-y divide-slate-100 ${className}`}
+    >
       {/* Header */}
       <div className="pb-4 flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
@@ -78,17 +77,19 @@ export const FilterSidebar = ({
         <div className="space-y-1.5">
           <button
             type="button"
-            onClick={() => handleCategoryClick('')}
+            onClick={() => handleCategoryClick("")}
             className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
               !filters.category
-                ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                : 'text-slate-600 hover:bg-slate-50'
+                ? "bg-indigo-50 text-indigo-700 font-semibold"
+                : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             <span>All Categories</span>
           </button>
           {categories.map((cat) => {
-            const isSelected = filters.category === cat.slug || String(filters.category) === String(cat.id);
+            const isSelected =
+              filters.category === cat.slug ||
+              String(filters.category) === String(cat.id);
             return (
               <button
                 key={cat.id}
@@ -96,13 +97,15 @@ export const FilterSidebar = ({
                 onClick={() => handleCategoryClick(cat.slug)}
                 className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
                   isSelected
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                    : 'text-slate-600 hover:bg-slate-50'
+                    ? "bg-indigo-50 text-indigo-700 font-semibold"
+                    : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 <span>{cat.name}</span>
                 {cat.count !== undefined && (
-                  <span className="text-[11px] text-slate-400">({cat.count})</span>
+                  <span className="text-[11px] text-slate-400">
+                    ({cat.count})
+                  </span>
                 )}
               </button>
             );
@@ -156,16 +159,16 @@ export const FilterSidebar = ({
         {/* Quick presets */}
         <div className="flex flex-wrap gap-1.5 mt-2.5">
           {[
-            { label: '< $100', max: 100 },
-            { label: '$100 - $300', min: 100, max: 300 },
-            { label: '$300+', min: 300 },
+            { label: "< $100", max: 100 },
+            { label: "$100 - $300", min: 100, max: 300 },
+            { label: "$300+", min: 300 },
           ].map((preset, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => {
-                setMinPriceInput(preset.min ? String(preset.min) : '');
-                setMaxPriceInput(preset.max ? String(preset.max) : '');
+                setMinPriceInput(preset.min ? String(preset.min) : "");
+                setMaxPriceInput(preset.max ? String(preset.max) : "");
                 onChange({
                   ...filters,
                   minPrice: preset.min ? String(preset.min) : undefined,
@@ -180,7 +183,6 @@ export const FilterSidebar = ({
           ))}
         </div>
       </div>
-
     </aside>
   );
 };

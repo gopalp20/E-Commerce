@@ -1,63 +1,106 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
-
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from "react";
+import { Check, AlertCircle, Info, X } from "lucide-react";
 const ToastContext = createContext(null);
-
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
-
-  const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+  const timers = useRef(new Map());
+  const remove = useCallback((id) => {
+    clearTimeout(timers.current.get(id));
+    timers.current.delete(id);
+    setToasts((items) => items.filter((item) => item.id !== id));
   }, []);
-
-  const showToast = useCallback((type, message, title = '') => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, type, message, title }]);
-    setTimeout(() => {
-      removeToast(id);
-    }, 4000);
-  }, [removeToast]);
-
-  const toast = {
-    success: (msg, title = 'Success') => showToast('success', msg, title),
-    error: (msg, title = 'Error') => showToast('error', msg, title),
-    info: (msg, title = 'Info') => showToast('info', msg, title),
-    warning: (msg, title = 'Warning') => showToast('warning', msg, title),
+  const show = useCallback(
+    (type, message, title = "") => {
+      const id = crypto.randomUUID();
+      setToasts((items) => [...items.slice(-2), { id, type, message, title }]);
+      timers.current.set(
+        id,
+        setTimeout(() => remove(id), type === "error" ? 7000 : 5000),
+      );
+    },
+    [remove],
+  );
+  useEffect(() => {
+    const active = timers.current;
+    return () => {
+      for (const timer of active.values()) clearTimeout(timer);
+      active.clear();
+    };
+  }, []);
+  const clear = useCallback(() => {
+    for (const timer of timers.current.values()) clearTimeout(timer);
+    timers.current.clear();
+    setToasts([]);
+  }, []);
+  const pause = (id) => clearTimeout(timers.current.get(id));
+  const resume = (id) => {
+    pause(id);
+    timers.current.set(
+      id,
+      setTimeout(() => remove(id), 4000),
+    );
   };
-
+  const toast = useMemo(
+    () => ({
+      clear,
+      success: (message, title = "Done") => show("success", message, title),
+      error: (message, title = "Something needs attention") =>
+        show("error", message, title),
+      warning: (message, title = "Please check") =>
+        show("warning", message, title),
+      info: (message, title = "A quick note") => show("info", message, title),
+    }),
+    [show, clear],
+  );
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      {/* Toast Notification Container */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
-        {toasts.map((t) => (
+      <div className="forme-toasts" aria-label="Notifications">
+        {toasts.map((item) => (
           <div
-            key={t.id}
-            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl shadow-lg border backdrop-blur-sm transition-all duration-300 transform translate-y-0 ${
-              t.type === 'success'
-                ? 'bg-emerald-50/95 border-emerald-200 text-emerald-950'
-                : t.type === 'error'
-                ? 'bg-rose-50/95 border-rose-200 text-rose-950'
-                : t.type === 'warning'
-                ? 'bg-amber-50/95 border-amber-200 text-amber-950'
-                : 'bg-indigo-50/95 border-indigo-200 text-indigo-950'
-            }`}
+            className={`forme-toast toast-${item.type}`}
+            key={item.id}
+            role={item.type === "error" ? "alert" : "status"}
+            onMouseEnter={() => pause(item.id)}
+            onMouseLeave={(event) => {
+              if (!event.currentTarget.contains(document.activeElement))
+                resume(item.id);
+            }}
+            onFocusCapture={() => pause(item.id)}
+            onBlurCapture={(event) => {
+              if (
+                !event.currentTarget.contains(event.relatedTarget) &&
+                !event.currentTarget.matches(":hover")
+              )
+                resume(item.id);
+            }}
           >
-            <div className="flex-shrink-0 mt-0.5">
-              {t.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
-              {t.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-600" />}
-              {t.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-600" />}
-              {t.type === 'info' && <Info className="w-5 h-5 text-indigo-600" />}
-            </div>
-            <div className="flex-1 min-w-0 text-sm">
-              {t.title && <p className="font-semibold">{t.title}</p>}
-              <p className="text-xs text-slate-600 mt-0.5">{t.message}</p>
+            <span className="toast-symbol">
+              {item.type === "success" ? (
+                <Check size={18} />
+              ) : item.type === "error" || item.type === "warning" ? (
+                <AlertCircle size={18} />
+              ) : (
+                <Info size={18} />
+              )}
+            </span>
+            <div>
+              <strong>{item.title}</strong>
+              <p>{item.message}</p>
             </div>
             <button
-              onClick={() => removeToast(t.id)}
-              className="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1 -mr-1 -mt-1"
+              aria-label="Dismiss notification"
+              onClick={() => remove(item.id)}
             >
-              <X className="w-4 h-4" />
+              <X size={17} />
             </button>
           </div>
         ))}
@@ -65,11 +108,4 @@ export const ToastProvider = ({ children }) => {
     </ToastContext.Provider>
   );
 };
-
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
-  }
-  return context;
-};
+export const useToast = () => useContext(ToastContext);

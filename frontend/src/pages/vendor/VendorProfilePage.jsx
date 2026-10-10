@@ -1,27 +1,51 @@
-import React from 'react';
-import { Store } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-
+import { Link } from "react-router-dom";
+import { ArrowUpRight } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { PageHeading, Person } from "../../components/management/UI";
 export const VendorProfilePage = () => {
   const { user } = useAuth();
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Vendor account</h2>
-        <p className="mt-1 text-sm text-slate-600">Account details associated with your marketplace login.</p>
-      </header>
-      <section className="rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-5">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><Store className="h-5 w-5" /></span>
-          <div><h3 className="font-semibold text-slate-900">{user?.name}</h3><p className="text-sm text-slate-500">Vendor account · ID {user?.id}</p></div>
-        </div>
-        <dl className="grid gap-5 pt-5 sm:grid-cols-2">
-          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</dt><dd className="mt-1 text-sm text-slate-900">{user?.name}</dd></div>
-          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt><dd className="mt-1 text-sm text-slate-900">{user?.email}</dd></div>
-          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Role</dt><dd className="mt-1 text-sm text-slate-900">{user?.role}</dd></div>
-        </dl>
-      </section>
-      <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">The backend does not currently support store profiles, payout settings, or vendor biographies. Manage your product listings and order fulfillment from the vendor dashboard.</p>
-    </div>
+    <>
+      <PageHeading
+        eyebrow="THE PERSON BEHIND THE PRODUCTS"
+        title="Your studio"
+        description="Your seller account, all in one place."
+      />
+      <div className="work-account-detail">
+        <section>
+          <Person name={user.name} email={user.email} />
+          <dl>
+            <div>
+              <dt>Studio name</dt>
+              <dd>{user.name}</dd>
+            </div>
+            <div>
+              <dt>Email address</dt>
+              <dd>{user.email}</dd>
+            </div>
+            <div>
+              <dt>Account type</dt>
+              <dd>Approved vendor</dd>
+            </div>
+            <div>
+              <dt>Seller ID</dt>
+              <dd>{String(user.id).padStart(4, "0")}</dd>
+            </div>
+          </dl>
+        </section>
+        <aside className="work-aside">
+          <p className="eyebrow">IN YOUR CORNER</p>
+          <h2>Your product collection</h2>
+          <p>
+            Keep your product descriptions, photography and availability up to
+            date. These are the details customers see in the store.
+          </p>
+          <Link to="/vendor/products" className="work-text-link">
+            Manage your collection
+            <ArrowUpRight size={15} />
+          </Link>
+        </aside>
+      </div>
+    </>
   );
 };

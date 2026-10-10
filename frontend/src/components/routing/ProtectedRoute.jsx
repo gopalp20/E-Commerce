@@ -1,7 +1,7 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { LoadingSpinner } from "../common/LoadingSpinner";
 
 export const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -16,15 +16,24 @@ export const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return (
+      <Navigate
+        to="/login"
+        state={{
+          from: location,
+          ...(location.pathname === "/saved" && { reviewReturn: "/saved" }),
+        }}
+        replace
+      />
+    );
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     // Role not authorized - redirect to their dashboard or home
-    if (user.role === 'VENDOR') {
+    if (user.role === "VENDOR") {
       return <Navigate to="/vendor" replace />;
     }
-    if (user.role === 'ADMIN') {
+    if (user.role === "ADMIN") {
       return <Navigate to="/admin" replace />;
     }
     return <Navigate to="/" replace />;

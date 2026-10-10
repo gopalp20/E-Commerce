@@ -12,15 +12,14 @@ const userResponse = (user) => ({
   id: user.id,
   name: user.name,
   email: user.email,
-  role: user.role
+  role: user.role,
+  vendorRequest: user.vendorRequest,
 });
 
 const createToken = (user) =>
-  jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
+  jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 
 const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
@@ -32,15 +31,15 @@ const register = asyncHandler(async (req, res) => {
     data: {
       name,
       email,
-      password: await bcrypt.hash(password, 10)
-    }
+      password: await bcrypt.hash(password, 10),
+    },
   });
 
   res.status(201).json({
     success: true,
     message: "User registered successfully.",
     token: createToken(user),
-    user: userResponse(user)
+    user: userResponse(user),
   });
 });
 
@@ -49,17 +48,14 @@ const login = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.findUnique({ where: { email } });
 
-  if (
-    !user ||
-    !(await bcrypt.compare(password, user.password))
-  )
+  if (!user || !(await bcrypt.compare(password, user.password)))
     throw new AppError("Invalid email or password.", 401);
 
   res.json({
     success: true,
     message: "Login successful.",
     token: createToken(user),
-    user: userResponse(user)
+    user: userResponse(user),
   });
 });
 
@@ -71,15 +67,16 @@ const getMe = asyncHandler(async (req, res) => {
       name: true,
       email: true,
       role: true,
-      createdAt: true
-    }
+      createdAt: true,
+      vendorRequest: true,
+    },
   });
 
   if (!user) throw new AppError("User not found.", 404);
 
   res.json({
     success: true,
-    user
+    user,
   });
 });
 

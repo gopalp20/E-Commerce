@@ -4,10 +4,10 @@ const router = express.Router();
 const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
 const validate = require("../middleware/validate");
-const { cartItemSchema, cartItemUpdateSchema } = require("../validations/schemas");
+const { cartItemSchema, cartItemUpdateSchema, cartMergeSchema } = require("../validations/schemas");
 
 const {
-    getCart,
+    getCart, mergeCart,
     addToCart,
     updateCartItem,
     removeCartItem,
@@ -18,6 +18,7 @@ const {
 router.use(protect, authorize("CUSTOMER"));
 
 router.get("/", getCart);
+router.post("/merge", validate(cartMergeSchema), mergeCart);
 router.post("/items", validate(cartItemSchema), addToCart);
 router.put("/items/:itemId", validate(cartItemUpdateSchema), updateCartItem);
 router.delete("/items/:itemId", removeCartItem);

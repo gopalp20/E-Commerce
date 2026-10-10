@@ -40,6 +40,11 @@ model User {
   products Product[]
   cart     Cart?
   orders   Order[]
+  addresses Address[]
+  mediaAssets MediaAsset[]
+  reviews Review[]
+  reviewVotes ReviewVote[]
+  savedItems SavedItem[]
 }
 
 model Category {
@@ -55,6 +60,7 @@ model Product {
   id          Int           @id @default(autoincrement())
   name        String
   description String
+  specifications Json @default("[]")
   price       Decimal       @db.Decimal(10, 2)
   stock       Int
   imageUrl    String?
@@ -74,6 +80,8 @@ model Product {
   cartItems  CartItem[]
   orderItems OrderItem[]
   images     ProductImage[]
+  reviews    Review[]
+  savedItems SavedItem[]
 
   @@index([categoryId, status, deleted])
   @@index([price])
@@ -83,12 +91,25 @@ model Product {
 model ProductImage {
   id        Int      @id @default(autoincrement())
   url       String
+  alt       String @default("")
+  position  Int @default(0)
   productId Int
   createdAt DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
+}
+
+model MediaAsset {
+  id        String @id @default(uuid())
+  url       String @unique
+  ownerId   Int
+  bytes     Int
+  createdAt DateTime @default(now())
+  owner     User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
 }
 
 model Cart {
@@ -119,10 +140,20 @@ model Order {
   id          Int         @id @default(autoincrement())
   userId      Int
   totalAmount Decimal     @db.Decimal(10, 2)
+  subtotal    Decimal     @default(0) @db.Decimal(10, 2)
+  shippingAmount Decimal  @default(0) @db.Decimal(10, 2)
+  currency    String      @default("INR")
+  shippingAddress Json?
+  deliveryMethod String   @default("STANDARD")
+  paymentMethod String    @default("COD")
+  checkoutKey String?
+  checkoutFingerprint String?
   status      OrderStatus @default(PENDING)
 
   user  User        @relation(fields: [userId], references: [id])
   items OrderItem[]
+
+  @@unique([userId, checkoutKey])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -134,9 +165,75 @@ model OrderItem {
   productId Int
   quantity  Int
   price     Decimal @db.Decimal(10, 2)
+  productName String?
+  productImage String?
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id])
 
   @@unique([orderId, productId])
+}
+model Address {
+  id Int @id @default(autoincrement())
+  userId Int
+  label String @default("Home")
+  name String
+  phone String
+  line1 String
+  line2 String @default("")
+  city String
+  state String
+  postalCode String
+  country String @default("India")
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+model Review {
+  id Int @id @default(autoincrement())
+  productId Int
+  userId Int
+  rating Int
+  title String
+  body String
+  status ReviewStatus @default(PUBLISHED)
+  moderationReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes ReviewVote[]
+  @@unique([userId, productId])
+  @@index([productId, status, createdAt])
+}
+
+model ReviewVote {
+  reviewId Int
+  userId Int
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([reviewId, userId])
+}
+
+model SavedItem {
+  userId Int
+  productId Int
+  quantity Int @default(1)
+  savedPrice Decimal @db.Decimal(10, 2)
+  productName String
+  productImage String?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@id([userId, productId])
+  @@index([userId, createdAt])
 }

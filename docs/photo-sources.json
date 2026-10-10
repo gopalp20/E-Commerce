@@ -1,0 +1,40 @@
+[
+  {
+    "file": "cup.jpg",
+    "source": "https://unsplash.com/photos/white-ceramic-mug-on-white-surface-oJ9CgpidOco",
+    "image": "https://images.unsplash.com/photo-1611502692278-8790788af174?auto=format&fit=crop&w=1100&q=85"
+  },
+  {
+    "file": "bag.jpg",
+    "source": "https://unsplash.com/photos/3F4QMnmWJsA",
+    "image": "https://images.unsplash.com/photo-1571254165288-99dd71f0e352?auto=format&fit=crop&w=1100&q=85"
+  },
+  {
+    "file": "lamp.jpg",
+    "source": "https://unsplash.com/photos/a-white-table-lamp-sitting-on-top-of-a-wooden-table-AgU9-qsNc1Y",
+    "image": "https://images.unsplash.com/photo-1580130281320-0ef0754f2bf7?auto=format&fit=crop&w=1100&q=85"
+  },
+  {
+    "file": "desk.jpg",
+    "source": "https://unsplash.com/photos/table-lamp-on-desk-inside-room-lDlU1zbjGQA",
+    "image": "https://images.unsplash.com/photo-1564540574859-0dfb63985953?auto=format&fit=crop&w=1100&q=85"
+  },
+  {
+    "file": "forme-living.jpg",
+    "source": "https://unsplash.com/photos/a-red-chair-sitting-in-a-living-room-next-to-a-window-bzMGormuNLI",
+    "photographer": "ASR Design Studio",
+    "image": "https://images.unsplash.com/photo-1687947979440-46413293a321?auto=format&fit=crop&w=1800&q=85"
+  },
+  {
+    "file": "forme-studio.jpg",
+    "source": "https://unsplash.com/photos/black-and-white-striped-padded-chair-sizBZSOon0A",
+    "photographer": "Padraig Treanor",
+    "image": "https://images.unsplash.com/photo-1594201408271-b873cdd6ce1e?auto=format&fit=crop&w=1200&q=85"
+  },
+  {
+    "file": "headphones.jpg",
+    "source": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e",
+    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1100&q=85",
+    "note": "Retained the product-image reference from the original project."
+  }
+]

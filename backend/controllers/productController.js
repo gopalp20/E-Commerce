@@ -1,20 +1,27 @@
+const { withRatings } = require("../services/reviewService");
 const prisma = require("../config/prisma");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
 const { increaseStock } = require("../services/inventoryService");
 const { resolveProductStatus } = require("../services/productStatusService");
 
+const {
+  galleryFromInput,
+  validateGallery,
+  imageOrder,
+} = require("../services/productGalleryService");
+
 const publicVendorSelect = {
   id: true,
-  name: true
+  name: true,
 };
 
 const publicInclude = {
   vendor: {
-    select: publicVendorSelect
+    select: publicVendorSelect,
   },
   category: true,
-  images: true
+  images: { orderBy: imageOrder },
 };
 
 // ==================== ENSURE PRODUCT OWNER ====================
@@ -23,8 +30,8 @@ const ensureProductOwner = async (productId, user) => {
   const product = await prisma.product.findFirst({
     where: {
       id: productId,
-      deleted: false
-    }
+      deleted: false,
+    },
   });
 
   if (!product) {
@@ -54,8 +61,8 @@ const increaseProductStock = asyncHandler(async (req, res) => {
     where: {
       id,
       vendorId: req.user.id,
-      deleted: false
-    }
+      deleted: false,
+    },
   });
 
   if (!product) {
@@ -63,67 +70,65 @@ const increaseProductStock = asyncHandler(async (req, res) => {
   }
 
   // Use inventory service to increase stock
-  const updatedProduct = await increaseStock(
-    prisma,
-    id,
-    quantity
-  );
+  const updatedProduct = await increaseStock(prisma, id, quantity);
 
   res.json({
     success: true,
     message: "Stock increased successfully",
-    product: updatedProduct
+    product: updatedProduct,
   });
 });
 
 // ==================== CREATE PRODUCT ====================
 
 const createProduct = asyncHandler(async (req, res) => {
-  const {
-    images = [],
-    categoryId,
-    imageUrl,
-    ...fields
-  } = req.body;
+  const { images, categoryId, imageUrl, ...fields } = req.body;
 
   const category = await prisma.category.findUnique({
     where: {
-      id: categoryId
-    }
+      id: categoryId,
+    },
   });
 
   if (!category) {
     throw new AppError("Category not found", 404);
   }
 
-  const status =
-    fields.stock === 0
-      ? "OUT_OF_STOCK"
-      : "ACTIVE";
+  const status = resolveProductStatus({
+    currentStatus: "ACTIVE",
+    stock: fields.stock,
+    requestedStatus: fields.status || "ACTIVE",
+  });
+
+  const gallery = galleryFromInput({ images, imageUrl });
+  await validateGallery(gallery, [req.user.id]);
+  if (["ACTIVE", "OUT_OF_STOCK"].includes(status) && !gallery.length)
+    throw new AppError(
+      "Add a product photo before publishing, or save as a draft.",
+      400,
+    );
 
   const product = await prisma.product.create({
     data: {
       ...fields,
       status,
-      imageUrl: imageUrl || images[0] || null,
+      imageUrl: gallery[0]?.url || null,
       vendorId: req.user.id,
       categoryId,
 
-      images: images.length
+      images: gallery.length
         ? {
-            create: images.map((url) => ({
-              url
-            }))
+            create: gallery.map((image, position) => ({ ...image, position })),
           }
-        : undefined
+        : undefined,
     },
 
-    include: publicInclude
+    include: publicInclude,
   });
 
   res.status(201).json({
     success: true,
-    product
+    product,
   });
 });
 
@@ -134,26 +139,26 @@ const getMyProducts = asyncHandler(async (req, res) => {
     req.user.role === "ADMIN"
       ? {}
       : {
-          vendorId: req.user.id
+          vendorId: req.user.id,
         };
 
   const products = await prisma.product.findMany({
-    where: { ...where, deleted: false },
+    where,
 
     include: {
       category: true,
-      images: true
+      images: { orderBy: imageOrder },
     },
 
     orderBy: {
-      createdAt: "desc"
-    }
+      createdAt: "desc",
+    },
   });
 
   res.json({
     success: true,
     count: products.length,
-    products
+    products,
   });
 });
 
@@ -164,151 +169,31 @@ const getOutOfStockProducts = asyncHandler(async (req, res) => {
     where: {
       vendorId: req.user.id,
       stock: 0,
-      deleted: false
+      deleted: false,
     },
 
     include: {
       category: true,
-      images: true
+      images: { orderBy: imageOrder },
     },
 
     orderBy: {
-      createdAt: "desc"
-    }
+      createdAt: "desc",
+    },
   });
 
   res.json({
     success: true,
     count: products.length,
-    products
+    products,
   });
 });
 
 // ==================== GET PRODUCTS ====================
 
 const getProducts = asyncHandler(async (req, res) => {
-  const {
-    search,
-    category,
-    minPrice,
-    maxPrice,
-    sort,
-    page,
-    limit
-  } = req.validated.query;
-
-  const where = {
-    deleted: false,
-    status: "ACTIVE"
-  };
-
-  if (search) {
-    where.OR = [
-      {
-        name: {
-          contains: search
-        }
-      },
-      {
-        description: {
-          contains: search
-        }
-      }
-    ];
-  }
-
-  if (category) {
-    where.category =
-      /^\d+$/.test(category)
-        ? {
-            id: Number(category)
-          }
-        : {
-            slug: category
-          };
-  }
-
-  if (
-    minPrice !== undefined ||
-    maxPrice !== undefined
-  ) {
-    where.price = {
-      ...(minPrice !== undefined && {
-        gte: minPrice
-      }),
-
-      ...(maxPrice !== undefined && {
-        lte: maxPrice
-      })
-    };
-  }
-
-  const orderMap = {
-    price_asc: {
-      price: "asc"
-    },
-
-    price_desc: {
-      price: "desc"
-    },
-
-    newest: {
-      createdAt: "desc"
-    },
-
-    oldest: {
-      createdAt: "asc"
-    },
-
-    name_asc: {
-      name: "asc"
-    },
-
-    name_desc: {
-      name: "desc"
-    }
-  };
-
-  const [products, total] =
-    await prisma.$transaction([
-      prisma.product.findMany({
-        where,
-
-        include: publicInclude,
-
-        orderBy: orderMap[sort],
-
-        skip: (page - 1) * limit,
-
-        take: limit
-      }),
-
-      prisma.product.count({
-        where
-      })
-    ]);
-
-  res.json({
-    success: true,
-
-    products,
-
-    pagination: {
-      page,
-      limit,
-      total,
-
-      totalPages: Math.ceil(
-        total / limit
-      ),
-
-      hasNextPage:
-        page * limit < total,
-
-      hasPreviousPage:
-        page > 1
-    }
-  });
+  const result = await require("../services/catalogueService").catalogue(req.validated.query);
+  res.json({ success: true, ...result });
 });
 
 // ==================== GET SINGLE PRODUCT ====================
@@ -317,32 +202,26 @@ const getProduct = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id)) {
-    throw new AppError(
-      "Invalid product ID",
-      400
-    );
+    throw new AppError("Invalid product ID", 400);
   }
 
   const product = await prisma.product.findFirst({
     where: {
       id,
       deleted: false,
-      status: "ACTIVE"
+      status: { in: ["ACTIVE", "OUT_OF_STOCK"] },
     },
 
-    include: publicInclude
+    include: publicInclude,
   });
 
   if (!product) {
-    throw new AppError(
-      "Product not found",
-      404
-    );
+    throw new AppError("Product not found", 404);
   }
 
   res.json({
     success: true,
-    product
+    product: (await withRatings([product]))[0],
   });
 });
 
@@ -352,101 +231,91 @@ const updateProduct = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id)) {
-    throw new AppError(
-      "Invalid product ID",
-      400
-    );
+    throw new AppError("Invalid product ID", 400);
   }
 
-  await ensureProductOwner(
-    id,
-    req.user
-  );
+  await ensureProductOwner(id, req.user);
 
-  const {
-    images,
-    categoryId,
-    stock,
-    status,
-    imageUrl,
-    ...fields
-  } = req.body;
+  const { images, categoryId, stock, status, imageUrl, ...fields } = req.body;
 
   if (
     categoryId !== undefined &&
     !(await prisma.category.findUnique({
       where: {
-        id: categoryId
-      }
+        id: categoryId,
+      },
     }))
   ) {
-    throw new AppError(
-      "Category not found",
-      404
-    );
+    throw new AppError("Category not found", 404);
   }
 
-  const currentProduct = await prisma.product.findUnique({ where: { id } });
+  const currentProduct = await prisma.product.findUnique({
+    where: { id },
+    include: { images: { orderBy: imageOrder } },
+  });
+  const gallery = galleryFromInput({ images, imageUrl }, currentProduct);
+  if (gallery !== undefined)
+    await validateGallery(gallery, [req.user.id, currentProduct.vendorId]);
   const resolvedStock = stock === undefined ? currentProduct.stock : stock;
   const resolvedStatus = resolveProductStatus({
     currentStatus: currentProduct.status,
     stock: resolvedStock,
-    requestedStatus: status
+    requestedStatus: status,
   });
 
-  const product =
-    await prisma.product.update({
-      where: {
-        id
-      },
+  if (
+    ["ACTIVE", "OUT_OF_STOCK"].includes(
+      resolvedStatus || currentProduct.status,
+    ) &&
+    !(gallery === undefined
+      ? currentProduct.imageUrl || currentProduct.images.length
+      : gallery.length)
+  )
+    throw new AppError(
+      "Add a product photo before publishing, or save as a draft.",
+      400,
+    );
 
-      data: {
-        ...fields,
+  const product = await prisma.product.update({
+    where: {
+      id,
+    },
 
-        ...(stock !== undefined && {
-          stock
-        }),
+    data: {
+      ...fields,
 
-        ...(resolvedStatus && {
-          status: resolvedStatus
-        }),
+      ...(stock !== undefined && {
+        stock,
+      }),
 
-        ...(imageUrl !== undefined && {
-          imageUrl
-        }),
+      ...(resolvedStatus && {
+        status: resolvedStatus,
+      }),
 
-        ...(categoryId !== undefined && {
-          categoryId
-        }),
+      ...(categoryId !== undefined && {
+        categoryId,
+      }),
 
-        ...(images !== undefined && {
-          images: {
-            deleteMany: {},
+      ...(gallery !== undefined && {
+        images: {
+          deleteMany: {},
 
-            create: images.map(
-              (url) => ({
-                url
-              })
-            )
-          },
+          create: gallery.map((image, position) => ({ ...image, position })),
+        },
 
-          imageUrl:
-            imageUrl !== undefined
-              ? imageUrl
-              : images[0] || null
-        })
-      },
+        imageUrl: gallery[0]?.url || null,
+      }),
+    },
 
-      include: publicInclude
-    });
+    include: publicInclude,
+  });
 
   res.json({
     success: true,
 
-    message:
-      "Product updated successfully",
+    message: "Product updated successfully",
 
-    product
+    product,
   });
 });
 
@@ -456,38 +325,56 @@ const deleteProduct = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id)) {
-    throw new AppError(
-      "Invalid product ID",
-      400
-    );
+    throw new AppError("Invalid product ID", 400);
   }
 
-  await ensureProductOwner(
-    id,
-    req.user
-  );
+  await ensureProductOwner(id, req.user);
 
   await prisma.product.update({
     where: {
-      id
+      id,
     },
 
     data: {
       deleted: true,
       deletedAt: new Date(),
-      status: "ARCHIVED"
-    }
+      status: "ARCHIVED",
+    },
   });
 
   res.json({
     success: true,
 
-    message:
-      "Product archived successfully"
+    message: "Product archived successfully",
   });
 });
 
 // ==================== EXPORTS ====================
+
+const restoreProduct = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) throw new AppError("Invalid product ID", 400);
+  const product = await prisma.product.findUnique({ where: { id } });
+  if (!product) throw new AppError("Product not found", 404);
+  if (req.user.role !== "ADMIN" && product.vendorId !== req.user.id)
+    throw new AppError("Access denied", 403);
+  if (!product.deleted && product.status !== "ARCHIVED")
+    throw new AppError("This product is not archived.", 409);
+  const restored = await prisma.product.update({
+    where: { id },
+    data: {
+      deleted: false,
+      deletedAt: null,
+      status: "DRAFT",
+    },
+    include: publicInclude,
+  });
+  res.json({
+    success: true,
+    product: restored,
+    message: "Product restored as a draft",
+  });
+});
 
 module.exports = {
   createProduct,
@@ -497,5 +384,6 @@ module.exports = {
   getProduct,
   updateProduct,
   deleteProduct,
-  increaseProductStock
+  restoreProduct,
+  increaseProductStock,
 };

@@ -1,13 +1,13 @@
-import React from 'react';
-import { ProductCard } from './ProductCard';
-import { ProductCardSkeleton } from '../common/Skeleton';
-import { EmptyState } from '../common/EmptyState';
+import React from "react";
+import { ProductCard } from "./ProductCard";
+import { ProductCardSkeleton } from "../common/Skeleton";
+import { EmptyState } from "../common/EmptyState";
 
 export const ProductGrid = ({
   products = [],
   isLoading = false,
-  emptyTitle = 'No products found',
-  emptyDescription = 'Try adjusting your search query, price range, or category filter.',
+  emptyTitle = "No products found",
+  emptyDescription = "Try adjusting your search query, price range, or category filter.",
   onResetFilters,
   skeletonCount = 8,
 }) => {
@@ -26,7 +26,7 @@ export const ProductGrid = ({
       <EmptyState
         title={emptyTitle}
         description={emptyDescription}
-        actionText={onResetFilters ? 'Clear All Filters' : undefined}
+        actionText={onResetFilters ? "Clear All Filters" : undefined}
         onAction={onResetFilters}
       />
     );

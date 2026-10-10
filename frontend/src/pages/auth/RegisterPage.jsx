@@ -1,164 +1,138 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
-import { Input } from '../../components/common/Input';
-import { Button } from '../../components/common/Button';
-import { Mail, Lock, User, Store, ShieldAlert } from 'lucide-react';
-
+import { useState, useRef } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import { finishSignIn, signInDestination } from "../../lib/authNavigation";
+import { Field, PageState } from "../../components/forme/UI";
 export const RegisterPage = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('CUSTOMER'); // 'CUSTOMER' or 'VENDOR'
-  const [isLoading, setIsLoading] = useState(false);
-
-  const { register } = useAuth();
+  const { register, user, isLoading } = useAuth();
   const toast = useToast();
+  const submitting = useRef(false);
+  const location = useLocation();
   const navigate = useNavigate();
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters long.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match.');
-      return;
-    }
-
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const pending = location.state?.pendingAdd;
+  const submit = async (event) => {
+    event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
+    setError("");
+    setBusy(true);
     try {
-      setIsLoading(true);
-      const user = await register({ name, email, password, role });
-      if (user) {
-        if (user.role === 'VENDOR') navigate('/vendor');
-        else navigate('/');
-      }
-    } catch (err) {
-      // Handled in context
+      const account = await register(form);
+      navigate(
+        await finishSignIn(
+          account,
+          pending,
+          toast,
+          location.state?.reviewReturn,
+          location.state?.pendingSave,
+        ),
+        { replace: true },
+      );
+    } catch (e) {
+      setError(e.message);
     } finally {
-      setIsLoading(false);
+      setBusy(false);
+      submitting.current = false;
     }
   };
-
+  if (isLoading) return <PageState loading />;
+  if (user && !busy)
+    return (
+      <Navigate
+        to={signInDestination(user, location.state?.reviewReturn)}
+        replace
+      />
+    );
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-xl p-8 space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <Link to="/" className="inline-flex items-center gap-2 font-black text-xl text-slate-900">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-sm">
-              M
-            </div>
-            <span>Market<span className="text-indigo-600">Pulse</span></span>
-          </Link>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Create Your Account</h2>
-          <p className="text-xs text-slate-500">
-            Join as a buyer or independent merchant on the marketplace
+    <div className="auth-layout">
+      <div className="auth-visual">
+        <img src="/images/forme-living.jpg" alt="A warm reading corner" />
+        <div>
+          <p className="eyebrow">A FEW GOOD THINGS AWAIT</p>
+          <h2>
+            Here's to
+            <br />
+            the everyday.
+          </h2>
+        </div>
+      </div>
+      <div className="auth-form-wrap">
+        <div className="auth-form">
+          <p className="eyebrow">YOUR LITTLE CORNER OF FORME</p>
+          <h1>Make yourself at home.</h1>
+          <p>
+            Save addresses, keep track of orders, and find your next everyday
+            favourite.
           </p>
-        </div>
-
-        {/* Account Role Selection */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-            Account Type
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setRole('CUSTOMER')}
-              className={`p-3 rounded-xl border text-left flex items-center gap-2.5 text-xs font-semibold transition-all ${
-                role === 'CUSTOMER'
-                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-700 shadow-xs'
-                  : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
-              }`}
-            >
-              <User className={`w-4 h-4 ${role === 'CUSTOMER' ? 'text-indigo-600' : 'text-slate-400'}`} />
-              <div>
-                <p className="leading-tight">Customer</p>
-                <p className="text-[10px] text-slate-500 font-normal">Buy & Review</p>
-              </div>
+          {location.state?.pendingSave && (
+            <p className="auth-pending-note">
+              {location.state.pendingSave.name} will be saved after you create
+              your account.
+            </p>
+          )}
+          {pending && (
+            <p className="auth-pending-note">
+              {pending.name} will be added to your bag after registration.
+            </p>
+          )}
+          <form onSubmit={submit}>
+            <Field
+              label="Full name"
+              name="name"
+              autoComplete="name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+              minLength={2}
+              maxLength={100}
+            />
+            <Field
+              label="Email address"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              required
+            />
+            <Field
+              label="Password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required
+              minLength={8}
+              maxLength={128}
+            />
+            {error && (
+              <p className="error-message" role="alert">
+                {error}
+              </p>
+            )}
+            <button className="store-button full" disabled={busy}>
+              {busy ? <Loader2 className="spin" size={16} /> : null}
+              {busy ? "Creating your account…" : "Create account"}
+              <ArrowRight size={17} />
             </button>
-
-            <button
-              type="button"
-              onClick={() => setRole('VENDOR')}
-              className={`p-3 rounded-xl border text-left flex items-center gap-2.5 text-xs font-semibold transition-all ${
-                role === 'VENDOR'
-                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-700 shadow-xs'
-                  : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
-              }`}
-            >
-              <Store className={`w-4 h-4 ${role === 'VENDOR' ? 'text-indigo-600' : 'text-slate-400'}`} />
-              <div>
-                <p className="leading-tight">Vendor</p>
-                <p className="text-[10px] text-slate-500 font-normal">Sell & Ship</p>
-              </div>
-            </button>
+          </form>
+          <p className="checkout-terms">
+            Your information is used to manage your account and orders.{" "}
+            <Link to="/privacy">Read our privacy note.</Link>
+          </p>
+          <div className="auth-footer">
+            Already at home here?{" "}
+            <Link to="/login" state={location.state}>
+              Sign in
+            </Link>
           </div>
-        </div>
-
-        {/* Form Fields */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Full Name / Store Representative"
-            required
-            placeholder="Jane Doe"
-            leftIcon={User}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-
-          <Input
-            label="Email Address"
-            type="email"
-            required
-            placeholder="jane@example.com"
-            leftIcon={Mail}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <Input
-            label="Password"
-            type="password"
-            required
-            placeholder="At least 6 characters"
-            leftIcon={Lock}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <Input
-            label="Confirm Password"
-            type="password"
-            required
-            placeholder="Repeat password"
-            leftIcon={Lock}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
-
-          <Button
-            type="submit"
-            size="lg"
-            variant="primary"
-            isLoading={isLoading}
-            className="w-full"
-          >
-            Create {role === 'VENDOR' ? 'Vendor' : 'Customer'} Account
-          </Button>
-        </form>
-
-        <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
-          Already have an account?{' '}
-          <Link to="/login" className="font-bold text-indigo-600 hover:underline">
-            Sign in
-          </Link>
         </div>
       </div>
     </div>
