@@ -6,7 +6,7 @@ FORME is a multi-vendor e-commerce demo with a React frontend, Express API and N
 
 1. Install Node.js 22.12+ and open the project root.
 2. Run `npm run setup` (or `npm.cmd run setup` on Windows).
-3. Copy `backend/.env.example` to `backend/.env` and enter your Neon DATABASE_URL and private JWT_SECRET. Existing copies should replace the local database URL in their actual environment file. Keep PORT=5050 for the default API port.
+3. Copy `backend/.env.example` to `backend/.env` and enter your Neon DATABASE_URL, private JWT_SECRET, and CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET for photo uploads. Existing copies should edit their actual environment file. Keep PORT=5050 for the default API port.
 4. Run `npm run db:setup` once for migrations and demo accounts, then `npm run dev`.
 5. Open **http://127.0.0.1:5173** when the launcher reports ready. Keep the terminal open. Later starts only need `npm run dev`.
 
@@ -41,7 +41,7 @@ Add a sample delivery address, for example: Alex Morgan, 9000000000, 12 Demo Lan
 
 Sign out and open the vendor account that owns the purchased product. The cup belongs to Form & Field (`studio@forme.demo`). Open Orders and move this single-vendor order through Confirmed, Shipped and Delivered. Statuses represent manually recorded demo fulfilment; no courier is contacted. A mixed-vendor order must be handled by an admin because it currently has one shared status.
 
-In Products, open an existing listing to show descriptions, category, price, stock, draft/published state, product facts and photo ordering. A gallery supports up to ten images. To demonstrate uploading, use your own JPG/PNG/WebP photographs; `frontend/public/images/` has local sample images if needed. A draft can be saved before it has a publishable photo. Do not describe unrelated sample photos as different angles of the same item.
+In Products, open an existing listing to show descriptions, category, price, stock, draft/published state, product facts and photo ordering. A gallery supports up to ten images. With Cloudinary configured, upload your own JPG/PNG/WebP photographs; `frontend/public/images/` has local sample images if needed. Save the product and open it from another browser/computer to demonstrate shared cloud delivery. A draft can be saved before it has a publishable photo. Do not describe unrelated sample photos as different angles of the same item.
 
 ### 4. Verified purchase review (2 minutes)
 
@@ -74,6 +74,8 @@ Create another small order and cancel it before shipment. Explain and show stock
 | Need independent demo data | Use a separate Neon branch/database and configure its DATABASE_URL. For another app copy on the same computer, choose unused FORME_API_PORT and FORME_WEB_PORT values. |
 | API/web port conflicts | Change PORT / FORME_API_PORT and/or FORME_WEB_PORT. The UI proxy follows the selected API port. |
 | Launcher refuses the environment | Set DATABASE_URL to your Neon PostgreSQL URL with sslmode=require, and set JWT_SECRET. Local database URLs are no longer accepted. |
+| Photo uploads are not configured | Set all three CLOUDINARY_* values in backend/.env, run npm run db:migrate after this update, and restart the API. Keep the API secret out of frontend variables. |
+| An older uploaded photo is missing on another computer | Run npm run media:migrate on the computer holding that photo and using the same Neon records. Missing local files are reported; originals are retained. |
 | Login fails after switching project copies | Each origin has its own account session. Sign out and sign back in on the intended port. |
 | A review button is unavailable | Confirm that this customer owns a delivered order for this product. |
 | A vendor cannot update an order | Check product ownership and whether the order contains products from multiple sellers; an admin handles mixed orders. |
@@ -81,7 +83,7 @@ Create another small order and cancel it before shipment. Explain and show stock
 
 ## Data and boundaries
 
-Back up the Neon database and `backend/.local/product-media` (or MEDIA_DIRECTORY). Uploaded photos remain on the API computer; sharing Neon does not share those files. Preserve old local database folders if you may need to export their records later. Keep `.env` and uploaded private files out of source archives.
+Back up the Neon database, Cloudinary media library and any remaining legacy files in `backend/.local/product-media` (or MEDIA_DIRECTORY). New uploads are shared through Cloudinary; `npm run media:migrate` moves older uploaded files while preserving links. Preserve old local database folders if you may need to export their records later. Keep `.env` and private credentials out of source archives.
 
 Implemented scope: original multi-vendor handoff plus saved addresses, photo upload/gallery/zoom, specifications, review moderation, saved items, richer discovery, per-vendor admin filtering and motion/accessibility improvements.
 

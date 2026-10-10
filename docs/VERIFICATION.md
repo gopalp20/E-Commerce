@@ -1,5 +1,13 @@
 # FORME — verification
 
+## Cloudinary upload update — 10 October 2026
+
+73 automated tests pass: 3 launcher configuration tests, 14 backend unit tests, 50 API/PostgreSQL integration tests and 6 frontend tests. The production frontend build and `git diff --check` pass.
+
+New coverage exercises signed upload configuration, generated non-overwriting public IDs, WebP conversion before upload, HTTPS CDN redirects, persisted media ownership, cross-vendor rejection via both application and CDN links, provider/configuration errors without credential exposure, cleanup after a failed database save, readable legacy images and legacy-to-cloud migration that preserves product URLs and local originals. Migration tests cover missing files, symlinks, failed database updates and overlapping attempts.
+
+Integration tests applied the migrations to a disposable PostgreSQL database, used the real API/auth/gallery code and stubbed only Cloudinary provider calls. No real Cloudinary upload or shared Neon migration was run: account credentials are to be added separately. All temporary test services were stopped. Existing local app servers remain stopped at the user's request. Configure the three CLOUDINARY_* values in backend/.env, run setup and db:migrate, then perform a real vendor upload after starting the app. media:migrate is optional for older uploaded files whose records already exist in the configured Neon database.
+
 ## Neon startup update — 10 October 2026
 
 62 automated tests pass: 3 launcher configuration tests, 6 backend unit tests, 47 API/PostgreSQL integration tests and 6 frontend tests. The production frontend build and `git diff --check` pass. Configuration tests cover direct and pooled Neon URLs, TLS requirements, ports and rejection of the application database as a test target. Starting with the old local database configuration fails immediately with instructions to configure Neon.

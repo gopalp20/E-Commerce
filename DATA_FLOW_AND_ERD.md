@@ -12,13 +12,15 @@ flowchart LR
     A --> Z[Zod request validation]
     Z --> C[Controllers + ownership checks]
     C --> S[Business services]
-    S --> P[Prisma + PostgreSQL]
-    C --> M[Validated Sharp image storage]
+    S --> P[Prisma + Neon PostgreSQL]
+    C --> M[Sharp validation and WebP encoding]
+    M --> CL[Signed Cloudinary upload]
+    CL --> P
 ```
 
 Public catalogue/category/review reads bypass authentication where appropriate. Protected routes verify a JWT, fetch the current database user and enforce the current role. Ownership is checked separately from role. Request validation and database constraints protect shapes, identifiers and uniqueness. Shared error middleware returns errors without internal stack traces.
 
-The local launcher starts PostgreSQL, applies migrations, seeds only missing demo data and starts Express/Vite. It reports ready after the web page and proxied category API respond successfully. Local launch refuses an unrelated database URL and occupied ports. Browser assets, fonts and seeded photographs are served locally after dependency setup; user-entered remote image URLs still require their remote source.
+The local launcher starts Express/Vite using the configured Neon database. Database migration/seeding is explicit through db:setup or db:migrate/db:seed. It reports ready after the web page and proxied category API respond successfully, refusing invalid Neon URLs and occupied ports. Browser assets, fonts and seeded photographs are served locally after dependency setup. New uploaded images are stored in Cloudinary; their stable application links redirect to saved HTTPS CDN URLs.
 
 ## Domain model
 
@@ -49,7 +51,7 @@ erDiagram
 | Category | Unique slug; products reference a category; referenced categories cannot be deleted. |
 | Product | Vendor/category ownership; Decimal price, integer stock, public/private status, soft deletion, specifications JSON. |
 | ProductImage | Ordered photo URLs with descriptive alternative text. Product deletion cascades image rows. |
-| MediaAsset | Server-generated upload identity, public URL, owner and byte count. File bytes are outside PostgreSQL. |
+| MediaAsset | Server-generated upload identity, stable public URL, owner, byte count, optional unique Cloudinary public ID and HTTPS delivery URL. File bytes are outside PostgreSQL. Null cloud fields indicate legacy local storage. |
 | Cart | At most one cart per user. |
 | CartItem | Unique cart/product pair with positive quantity enforced by request/service logic. |
 | Order | Customer, status, subtotal/delivery/total, address JSON snapshot, INR, delivery/payment choices and customer-scoped checkout key. |
@@ -76,7 +78,7 @@ Customer cancellation is limited to their own eligible orders. Vendors can fulfi
 ## Reviews, media and saved items
 
 - **Reviews:** a delivered order permits one customer/product review. Published reviews contribute to average/count/distribution. Admin hiding requires a reason and removes it from public aggregates. Author edits do not undo moderation. Helpful votes are unique per customer/review and cannot be self-votes.
-- **Media:** vendor/admin uploads are checked for authentication, size, decoded format and dimensions. Sharp rotates/resizes and writes metadata-stripped WebP. Media ownership prevents another vendor from attaching the upload. Product gallery order, cover and alternative text persist separately from file bytes.
+- **Media:** vendor/admin uploads are checked for authentication, size, decoded format and dimensions. Sharp rotates/resizes and sends metadata-stripped WebP through signed Cloudinary uploads. Neon stores cloud metadata and ownership; stable image routes redirect to the CDN. Database-save failures trigger cloud cleanup. Media ownership prevents another vendor from attaching the upload, including by its CDN link. Product gallery order, cover and alternative text persist separately from file bytes. Explicit media:migrate moves legacy files without rewriting image references or deleting originals.
 - **Saved items:** save/remove is repeatable; bag-to-saved and saved-to-bag operations are atomic. A failed price/stock check preserves the saved item. Existing bag quantities are merged without doubling on retry. Private product edits are not exposed through an old saved snapshot.
 - **Discovery:** category/search/price/stock/rating filters apply before pagination. Only published ratings and delivered item quantities contribute to Highest rated and Best selling. Literal wildcard search characters are escaped.
 
