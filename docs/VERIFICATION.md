@@ -1,5 +1,15 @@
 # FORME — verification
 
+## Neon catalogue timeout repair — 11 October 2026
+
+The Windows report contained Prisma P1001 connectivity failures, P2024 pool exhaustion and P2028 transaction-start/expiry errors, including a catalogue transaction exceeding its 5-second deadline. The frontend gave up after 10 seconds. Before this repair, a read-only probe from this checkout took 5.56 seconds for the initial product request; warmed concurrent product reads took 3.79–5.32 seconds. This reproduced substantial latency, but not the friend's network outage.
+
+Product browsing now returns count, ranking, product relations and galleries in one SQL statement with a consistent snapshot. Category counts/covers also use one statement. The queries preserve decimal serialization, UTC dates, photo ordering, public seller fields, empty-page totals and existing filtering/ranking rules. Checkout transactions remain in place. Neon connections use conservative pool and wake-up defaults unless explicitly configured. Database outages return a safe 503, browser timeout errors are readable, retry buttons show loading, and startup checks both products and categories with a realistic waiting period.
+
+All 79 automated tests pass: 3 launcher configuration, 18 backend unit, 52 isolated API/PostgreSQL integration and 6 frontend tests. The production build passes; lint has zero errors and the same 22 existing warnings. The disposable integration database was stopped afterward. No migrations, reseeding or writes to the shared Neon store were required.
+
+The repaired live Neon probe returned 200 for all requests. First product/category responses were 4.66/2.63 seconds including new connections; warmed concurrent requests ranged from 0.55 to 2.41 seconds. A burst of twenty image redirects plus eight catalogue requests through the frontend proxy had zero failures and a 1.75-second maximum response time. These are local measurements, not a performance guarantee for another network. Browser verification loaded all four categories, eight home products, all twelve home images and the paginated twenty-product catalogue without console errors. The friend's Windows machine/network still needs to pull and run the fix; a persistent P1001 requires separate connectivity investigation.
+
 ## Shared Neon catalogue and real Cloudinary verification — 10 October 2026
 
 The shared Neon database was refreshed at the owner's explicit request after a private, consistent logical backup of its public-table rows and schema metadata. All seven application migrations are applied. The fresh dataset contains four demo accounts (customer, two vendors and admin), twenty active products, four categories and twenty-two Cloudinary photographs. Each seller owns ten products; each category contains five. No orders or reviews were seeded.

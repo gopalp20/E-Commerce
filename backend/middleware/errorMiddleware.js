@@ -1,4 +1,12 @@
 const { Prisma } = require("@prisma/client");
+const connectionErrors = new Set([
+  "P1001",
+  "P1002",
+  "P1008",
+  "P1017",
+  "P2024",
+  "P2028",
+]);
 
 const notFound = (req, res, next) => {
   const error = new Error(`Route not found: ${req.method} ${req.originalUrl}`);
@@ -9,6 +17,15 @@ const notFound = (req, res, next) => {
 const globalErrorHandler = (error, req, res, next) => {
   let statusCode = error.statusCode || 500;
   let message = error.message || "Internal Server Error";
+  const databaseUnavailable = connectionErrors.has(
+    error.code || error.errorCode,
+  );
+  if (databaseUnavailable) {
+    statusCode = 503;
+    message =
+      "The store's database is temporarily unavailable. Please try again shortly.";
+    res.set("Retry-After", "5");
+  }
   if (
     error.type === "entity.too.large" &&
     req.originalUrl.startsWith("/api/media/")
@@ -28,12 +45,16 @@ const globalErrorHandler = (error, req, res, next) => {
     }
   }
 
-  if (statusCode >= 500) console.error(error);
+  if (databaseUnavailable)
+    console.error(
+      `Database unavailable (${error.code || error.errorCode}). Check the Neon connection and network access.`,
+    );
+  else if (statusCode >= 500) console.error(error);
 
   res.status(statusCode).json({
     success: false,
     message:
-      statusCode >= 500 && error.expose !== true
+      statusCode >= 500 && error.expose !== true && !databaseUnavailable
         ? "Internal Server Error"
         : message,
     ...(error.details && { details: error.details }),

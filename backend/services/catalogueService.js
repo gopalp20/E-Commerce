@@ -1,6 +1,5 @@
 const { Prisma } = require("@prisma/client");
 const prisma = require("../config/prisma");
-const { imageOrder } = require("./productGalleryService");
 
 // Aggregate before pagination, so ratings and sales rank the entire matching
 // collection. Values are bound parameters; sort fragments are a closed map.
@@ -61,42 +60,55 @@ async function catalogue(query) {
         : Prisma.empty
     }
     WHERE ${Prisma.join(clauses, " AND ")}`;
-  return prisma.$transaction(
-    async (tx) => {
-      const [count] = await tx.$queryRaw(
-        Prisma.sql`SELECT COUNT(*)::int AS total ${from}`,
-      );
-      const ranked =
-        await tx.$queryRaw(Prisma.sql`SELECT p.id, r.average::float AS "ratingAverage", COALESCE(r.count, 0) AS "reviewCount" ${from}
-      ORDER BY ${orders[sort]} LIMIT ${limit} OFFSET ${(page - 1) * limit}`);
-      const rows = ranked.length
-        ? await tx.product.findMany({
-            where: { id: { in: ranked.map((p) => p.id) } },
-            include: {
-              category: true,
-              vendor: { select: { id: true, name: true } },
-              images: { orderBy: imageOrder },
-            },
-          })
-        : [];
-      const byId = new Map(rows.map((p) => [p.id, p]));
-      return {
-        products: ranked.map((p) => ({
-          ...byId.get(p.id),
-          ratingAverage: p.ratingAverage,
-          reviewCount: p.reviewCount,
-        })),
-        pagination: {
-          page,
-          limit,
-          total: count.total,
-          totalPages: Math.ceil(count.total / limit),
-          hasNextPage: page * limit < count.total,
-          hasPreviousPage: page > 1,
-        },
-      };
+  // One SQL statement gives the count, ranking and gallery the same snapshot.
+  // An interactive transaction used to keep a connection across nine remote
+  // round trips, often exceeding Prisma's five-second transaction deadline.
+  const [result] = await prisma.$queryRaw(Prisma.sql`
+    WITH matching AS (
+      SELECT p.id, r.average::float AS "ratingAverage", COALESCE(r.count, 0) AS "reviewCount",
+        ROW_NUMBER() OVER (ORDER BY ${orders[sort]}) AS position
+      ${from}
+    ), selected AS (
+      SELECT * FROM matching ORDER BY position
+      LIMIT ${limit} OFFSET ${(page - 1) * limit}
+    )
+    SELECT (SELECT COUNT(*)::int FROM matching) AS total,
+      COALESCE((SELECT jsonb_agg(
+        to_jsonb(p) || jsonb_build_object(
+          'price', p.price::text,
+          'category', to_jsonb(c),
+          'vendor', jsonb_build_object('id', v.id, 'name', v.name),
+          'images', COALESCE((SELECT jsonb_agg(to_jsonb(i) ORDER BY i.position, i.id)
+            FROM "ProductImage" i WHERE i."productId" = p.id), '[]'::jsonb),
+          'ratingAverage', selected."ratingAverage",
+          'reviewCount', selected."reviewCount"
+        ) ORDER BY selected.position
+      ) FROM selected
+        JOIN "Product" p ON p.id = selected.id
+        JOIN "Category" c ON c.id = p."categoryId"
+        JOIN "User" v ON v.id = p."vendorId"), '[]'::jsonb) AS products
+  `);
+  // PostgreSQL JSON timestamps have no zone; Prisma stores these fields as UTC.
+  const dates = (row) => {
+    for (const field of ["createdAt", "updatedAt", "deletedAt"])
+      if (row[field]) row[field] = new Date(row[field] + "Z").toISOString();
+    return row;
+  };
+  return {
+    products: result.products.map((product) => ({
+      ...dates(product),
+      price: new Prisma.Decimal(product.price).toJSON(),
+      category: dates(product.category),
+      images: product.images.map(dates),
+    })),
+    pagination: {
+      page,
+      limit,
+      total: result.total,
+      totalPages: Math.ceil(result.total / limit),
+      hasNextPage: page * limit < result.total,
+      hasPreviousPage: page > 1,
     },
-    { isolationLevel: "RepeatableRead" },
-  );
+  };
 }
 module.exports = { catalogue };

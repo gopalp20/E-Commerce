@@ -71,7 +71,7 @@ try {
     child.once("exit", () => {
       if (!stopping) stop(1);
     });
-  const deadline = Date.now() + 30_000;
+  const deadline = Date.now() + 60_000;
   while (true) {
     try {
       // Let the API bind before probing through Vite, avoiding misleading
@@ -85,12 +85,16 @@ try {
           signal: AbortSignal.timeout(1000),
         }),
         fetch(`http://127.0.0.1:${ports.web}/api/categories`, {
-          signal: AbortSignal.timeout(1000),
+          signal: AbortSignal.timeout(15000),
+        }),
+        fetch(`http://127.0.0.1:${ports.web}/api/products?limit=1`, {
+          signal: AbortSignal.timeout(15000),
         }),
       ]);
       if (
         results.every((response) => response.ok) &&
-        (await results[1].json()).success === true
+        (await results[1].json()).success === true &&
+        (await results[2].json()).success === true
       )
         break;
     } catch {
@@ -98,9 +102,9 @@ try {
     }
     if (Date.now() > deadline)
       throw new Error(
-        "The store did not become ready. Check the service output and run npm run db:setup once for a new Neon database.",
+        "The store could not load its catalogue. Check the service output, internet connection and Neon availability. An existing store does not need to be re-seeded.",
       );
-    await delay(250);
+    await delay(1000);
   }
   console.log(
     `\nFORME is ready → http://127.0.0.1:${ports.web}\nAPI and Neon database connection verified.\nPress Control-C to stop the API and frontend. Your Neon data stays saved.\n`,

@@ -36,43 +36,25 @@ const createCategory = asyncHandler(async (req, res) => {
 });
 
 const getCategories = asyncHandler(async (req, res) => {
-  const categories = await prisma.category.findMany({
-    orderBy: { id: "asc" },
-    include: {
-      products: {
-        where: { deleted: false, status: { in: ["ACTIVE", "OUT_OF_STOCK"] } },
-        select: {
-          imageUrl: true,
-          images: {
-            select: { url: true },
-            orderBy: [{ position: "asc" }, { id: "asc" }],
-            take: 1,
-          },
-        },
-        orderBy: { id: "asc" },
-        take: 1,
-      },
-      _count: {
-        select: {
-          products: {
-            where: {
-              deleted: false,
-              status: { in: ["ACTIVE", "OUT_OF_STOCK"] },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  res.json({
-    success: true,
-    count: categories.length,
-    categories: categories.map(({ products, ...category }) => ({
-      ...category,
-      imageUrl: products[0]?.imageUrl || products[0]?.images[0]?.url || null,
-    })),
-  });
+  // Count and cover in one database round trip, rather than fetching nested
+  // products and image relations separately over the Neon connection.
+  const categories = await prisma.$queryRaw`
+    SELECT c.*, jsonb_build_object('products', (
+      SELECT COUNT(*)::int FROM "Product" p
+      WHERE p."categoryId" = c.id AND p.deleted = false
+        AND p.status IN ('ACTIVE', 'OUT_OF_STOCK')
+    )) AS "_count", (
+      SELECT COALESCE(NULLIF(p."imageUrl", ''), (
+        SELECT i.url FROM "ProductImage" i WHERE i."productId" = p.id
+        ORDER BY i.position, i.id LIMIT 1
+      )) FROM "Product" p
+      WHERE p."categoryId" = c.id AND p.deleted = false
+        AND p.status IN ('ACTIVE', 'OUT_OF_STOCK')
+      ORDER BY p.id LIMIT 1
+    ) AS "imageUrl"
+    FROM "Category" c ORDER BY c.id
+  `;
+  res.json({ success: true, count: categories.length, categories });
 });
 
 const getCategory = asyncHandler(async (req, res) => {

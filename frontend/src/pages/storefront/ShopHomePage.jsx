@@ -72,7 +72,11 @@ export const ShopHomePage = () => {
             <p>{error}</p>
             <button
               className="store-button secondary"
-              onClick={() => setRetry((n) => n + 1)}
+              onClick={() => {
+                setError("");
+                setProducts(null);
+                setRetry((n) => n + 1);
+              }}
             >
               Try again
             </button>

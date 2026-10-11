@@ -12,7 +12,7 @@ export function CategoryCollection({ editorial = false }) {
         </button>
       </div>
     );
-  if (loading)
+  if (loading && !categories.length)
     return (
       <div className="category-collection" aria-label="Loading categories">
         {[0, 1, 2, 3].map((i) => (

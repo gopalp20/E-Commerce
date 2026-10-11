@@ -26,6 +26,14 @@ Open **http://127.0.0.1:5173**. API: `127.0.0.1:5050` by default. The API port f
 
 New product uploads live in Cloudinary. Neon holds their owner, stable application URL, Cloudinary public ID and HTTPS delivery URL, so computers sharing Neon can display those photos without copying files. Older uploads remain readable from their original API computer until explicitly migrated with `npm run media:migrate`.
 
+### If products or categories time out
+
+Update the code, stop any separately started frontend/backend terminals, and run `npm run dev` from the project root. Wait for **FORME is ready**; the launcher checks both catalogue endpoints through the frontend proxy. Existing installations do not need a database reset, new seed data or new environment variables for the timeout fix.
+
+The Prisma 5 runtime applies Neon defaults of `connect_timeout=15`, `pool_timeout=15` and `connection_limit=5` when absent from the connection URL. Explicit URL settings are preserved. This follows [Prisma's Neon timeout guidance](https://www.prisma.io/docs/orm/v6/overview/databases/neon#resolving-connection-timeouts); it does not change the database, credentials or TLS settings. Product and category lists each use one SQL query; order writes retain their transactions. The browser allows up to 30 seconds for API responses and shows a readable retry message for connection failures.
+
+If `P1001` continues, that computer still cannot establish a database connection. Check Neon availability and test another network (for example, a mobile hotspot) to distinguish a local network restriction from a database outage. `P2024` means the connection pool wait expired; `P2028` means a transaction could not start or finish in time. Increasing timeouts cannot repair a persistent network block. Keep credentials out of shared error logs.
+
 ## Try the shopping flow
 
 1. Explore the collection; search, filter by category/price, or sort.

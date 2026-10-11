@@ -1437,6 +1437,93 @@ test("Public catalogue combines description search, category, prices, ordering a
     assert.equal((await request("/products?" + invalid)).status, 400);
 });
 
+test("Catalogue keeps decimal prices, UTC dates, ordered galleries and public vendor fields", async () => {
+  const p = await product(4, 123.45);
+  const name = `${prefix} catalogue-shape`;
+  await prisma.product.update({
+    where: { id: p.id },
+    data: {
+      name,
+      specifications: [{ label: "Material", value: "Ceramic" }],
+      images: {
+        create: [
+          { url: "/images/side.jpg", alt: "Side", position: 1 },
+          { url: "/images/cover.jpg", alt: "Cover", position: 0 },
+        ],
+      },
+    },
+  });
+  const expected = await prisma.product.findUnique({
+    where: { id: p.id },
+    include: {
+      category: true,
+      vendor: { select: { id: true, name: true } },
+      images: { orderBy: [{ position: "asc" }, { id: "asc" }] },
+    },
+  });
+  const query = `/products?search=${encodeURIComponent(name)}&limit=1`;
+  const result = await request(query);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.products, [
+    {
+      ...JSON.parse(JSON.stringify(expected)),
+      ratingAverage: null,
+      reviewCount: 0,
+    },
+  ]);
+  const beyond = await request(query + "&page=2");
+  assert.deepEqual(beyond.products, []);
+  assert.equal(beyond.pagination.total, 1);
+  assert.equal(beyond.pagination.totalPages, 1);
+  const none = await request(query + "&minPrice=500");
+  assert.deepEqual(none.products, []);
+  assert.equal(none.pagination.total, 0);
+});
+
+test("Category summaries preserve public counts and cover fallback without exposing private listings", async () => {
+  const expected = await prisma.category.findMany({
+    orderBy: { id: "asc" },
+    include: {
+      products: {
+        where: { deleted: false, status: { in: ["ACTIVE", "OUT_OF_STOCK"] } },
+        select: {
+          imageUrl: true,
+          images: {
+            select: { url: true },
+            orderBy: [{ position: "asc" }, { id: "asc" }],
+            take: 1,
+          },
+        },
+        orderBy: { id: "asc" },
+        take: 1,
+      },
+      _count: {
+        select: {
+          products: {
+            where: {
+              deleted: false,
+              status: { in: ["ACTIVE", "OUT_OF_STOCK"] },
+            },
+          },
+        },
+      },
+    },
+  });
+  const result = await request("/categories");
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.categories,
+    JSON.parse(
+      JSON.stringify(
+        expected.map(({ products: entries, ...row }) => ({
+          ...row,
+          imageUrl: entries[0]?.imageUrl || entries[0]?.images[0]?.url || null,
+        })),
+      ),
+    ),
+  );
+});
+
 test("Category CRUD enforces admin permissions, unique slugs and references including archived products", async () => {
   const admin = await account("category-crud-admin", "ADMIN");
   const body = { name: "Audit category", slug: `${prefix}-crud` };

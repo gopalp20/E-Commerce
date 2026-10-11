@@ -17,6 +17,8 @@ export const CategoryProvider = ({ children }) => {
   const request = useRef(0);
   const refresh = useCallback(async () => {
     const id = ++request.current;
+    setLoading(true);
+    setError("");
     try {
       const data = await categoriesApi.getCategories();
       if (id === request.current) {

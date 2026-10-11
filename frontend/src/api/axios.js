@@ -5,7 +5,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: 30000,
 });
 
 // Attach Authorization token to every request if available
@@ -30,6 +30,12 @@ api.interceptors.response.use(
       error.response?.data?.message;
     if (backendMessage) {
       error.message = backendMessage;
+    } else if (["ECONNABORTED", "ETIMEDOUT"].includes(error.code)) {
+      error.message =
+        "The store is taking longer to respond. Please try again shortly.";
+    } else if (error.code === "ERR_NETWORK") {
+      error.message =
+        "We couldn't reach the store. Check your connection and try again.";
     }
 
     if (error.response && error.response.status === 401) {
