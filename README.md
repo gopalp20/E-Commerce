@@ -52,7 +52,7 @@ Demo accounts all use the password `FormeDemo2026!`. These accounts are for loca
 | Vendor — Everyday Studio | `objects@forme.demo` |
 | Administrator | `admin@forme.demo` |
 
-The development sign-in page has Customer, Vendor and Admin buttons that fill the corresponding details. Sign out to switch roles. Customers land at `/shop`, vendors at `/vendor`, and admins at `/admin`. The seeded catalogue has twenty illustrative products: ten per seller and five in each of four categories. Twenty-two attributed photographs include three views of The Travel Pouch for gallery testing. No orders or reviews are fabricated. Seeding preserves existing matching accounts, product edits, gallery storage links and orders; it does not clear the database.
+The development sign-in page has Customer, Vendor and Admin buttons that fill the corresponding details. Sign out to switch roles. Customers land at `/shop`, vendors at `/vendor`, and admins at `/admin`. The seeded catalogue has forty illustrative products: twenty per seller and ten in each of four categories. Forty-two attributed photographs include three views of The Travel Pouch for gallery testing. No orders or reviews are fabricated. Seeding preserves existing matching accounts, product edits, gallery storage links and orders; it does not clear the database.
 
 ## What is working
 

@@ -55,7 +55,7 @@ async function main() {
     });
   }
   console.log(
-    "FORME: 20 demo products and four accounts are ready. Existing data was preserved.",
+    `FORME: ${catalogue.length} demo products and four accounts are ready. Existing data was preserved.`,
   );
 }
 main()

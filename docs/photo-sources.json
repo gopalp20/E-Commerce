@@ -130,5 +130,165 @@
     "image": "https://images.unsplash.com/photo-1749294435694-ce3c586591e6?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&dl=ocult-store-K78mXNm0zdM-unsplash.jpg&w=1200",
     "license": "Unsplash License",
     "alt": "Leather pouch detail"
+  },
+  {
+    "source": "https://unsplash.com/photos/beige-wooden-bar-stool-4kTbAMRAHtQ",
+    "license": "https://unsplash.com/license",
+    "photographer": "Ruslan Bardash",
+    "alt": "beige wooden bar stool",
+    "image": "https://images.unsplash.com/photo-1503602642458-232111445657?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-stool.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/round-mirror-with-black-strap-pdZ2BwpLyis",
+    "license": "https://unsplash.com/license",
+    "photographer": "Milada Vigerova",
+    "alt": "round mirror with black strap",
+    "image": "https://images.unsplash.com/photo-1513716875652-59c99449ee70?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-mirror.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/a-wicker-basket-with-a-pair-of-shoes-in-it-1qSnrIRUu5U",
+    "license": "https://unsplash.com/license",
+    "photographer": "Gaby Baldiskaite",
+    "alt": "a wicker basket with a pair of shoes in it",
+    "image": "https://images.unsplash.com/photo-1674591409662-55f4f2c55fff?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-basket.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/a-wooden-cabinet-sitting-in-a-room-next-to-a-window-R2t6RHjCYFM",
+    "license": "https://unsplash.com/license",
+    "photographer": "Jason Leung",
+    "alt": "a wooden cabinet sitting in a room next to a window",
+    "image": "https://images.unsplash.com/photo-1713810958247-01dbd76b4a61?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-sideboard.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/a-couch-with-a-blanket-on-top-of-it-VSRjzIj0148",
+    "license": "https://unsplash.com/license",
+    "photographer": "Bearaby",
+    "alt": "a couch with a blanket on top of it",
+    "image": "https://images.unsplash.com/photo-1674475760738-8c7af859f821?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-throw.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/a-white-tea-pot-sitting-on-top-of-a-table-IFPMKh8C02I",
+    "license": "https://unsplash.com/license",
+    "photographer": "AMAL MK",
+    "alt": "a white tea pot sitting on top of a table",
+    "image": "https://images.unsplash.com/photo-1683558654439-8b9986cbf1dd?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-teapot.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/a-stove-top-coffee-maker-on-a-yellow-background-WyD1PTucBZc",
+    "license": "https://unsplash.com/license",
+    "photographer": "Thomas Murphy",
+    "alt": "a stove top coffee maker on a yellow background",
+    "image": "https://images.unsplash.com/photo-1638129284529-bed6d6f588e7?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-moka.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/brown-wooden-chopping-board-on-white-background-OOv2sCKwYAA",
+    "license": "https://unsplash.com/license",
+    "photographer": "Mockup Graphics",
+    "alt": "brown wooden chopping board on white background",
+    "image": "https://images.unsplash.com/photo-1587302108992-20648821725d?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-board.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/a-white-plate-with-a-brown-rim-on-a-white-surface-coV4CuQFx1I",
+    "license": "https://unsplash.com/license",
+    "photographer": "John Vid",
+    "alt": "a white plate with a brown rim on a white surface",
+    "image": "https://images.unsplash.com/photo-1705948730553-3ea0c89ae6fb?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-plate.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/clear-glass-pitcher-with-brown-liquid-QZq3DBHZmQk",
+    "license": "https://unsplash.com/license",
+    "photographer": "Goran Ivos",
+    "alt": "clear glass pitcher with brown liquid",
+    "image": "https://images.unsplash.com/photo-1605787225918-9d1e6dd8561c?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-carafe.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/black-and-orange-computer-keyboard-KYw1eUx1J7Y",
+    "license": "https://unsplash.com/license",
+    "photographer": "Stefen Tan",
+    "alt": "black and orange computer keyboard",
+    "image": "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-keyboard.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/white-and-grey-logitech-g-series-cordless-mouse-on-white-surface-VghbBAYqUJ0",
+    "license": "https://unsplash.com/license",
+    "photographer": "Frankie",
+    "alt": "white and grey Logitech G-Series cordless mouse on white surface",
+    "image": "https://images.unsplash.com/photo-1527814050087-3793815479db?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-mouse.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/black-and-silver-fountain-pen-hjwKMkehBco",
+    "license": "https://unsplash.com/license",
+    "photographer": "Álvaro Serrano",
+    "alt": "black and silver fountain pen",
+    "image": "https://images.unsplash.com/photo-1473186505569-9c61870c11f9?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-pen.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/red-and-silver-table-lamp-at5-1nW3UCY",
+    "license": "https://unsplash.com/license",
+    "photographer": "Oscar Ivan Esquivel Arteaga",
+    "alt": "red and silver table lamp",
+    "image": "https://images.unsplash.com/photo-1621447980929-6638614633c8?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-task-lamp.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/a-computer-desk-with-a-mouse-and-keyboard-on-it-8e9KCdOj29o",
+    "license": "https://unsplash.com/license",
+    "photographer": "Muhammet SAIN",
+    "alt": "a computer desk with a mouse and keyboard on it",
+    "image": "https://images.unsplash.com/photo-1650394923482-a0d03ffb2512?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-desk-mat.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/brown-leather-backpack-on-white-surface-3o-X8WJOP5E",
+    "license": "https://unsplash.com/license",
+    "photographer": "Wiser by the Mile",
+    "alt": "brown leather backpack on white surface",
+    "image": "https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-backpack.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/black-leather-bifold-wallet-on-white-surface--lN0HnySy7w",
+    "license": "https://unsplash.com/license",
+    "photographer": "Mason Supply",
+    "alt": "black leather bifold wallet on white surface",
+    "image": "https://images.unsplash.com/photo-1601592996763-f05c9c80a7f1?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-wallet.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/white-baseball-cap-on-white-surface-t8HiP3e5abg",
+    "license": "https://unsplash.com/license",
+    "photographer": "Mediamodifier",
+    "alt": "white baseball cap on white surface",
+    "image": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-cap.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/floating-black-umbrella-bljj8PxJF74",
+    "license": "https://unsplash.com/license",
+    "photographer": "Taylor Wright",
+    "alt": "floating black umbrella",
+    "image": "https://images.unsplash.com/photo-1541697183324-e15d407c91cf?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-umbrella.jpg"
+  },
+  {
+    "source": "https://unsplash.com/photos/three-gray-green-and-white-scarf-on-top-of-table-CNjfgzoY8JU",
+    "license": "https://unsplash.com/license",
+    "photographer": "Kelly Sikkema",
+    "alt": "three gray, green, and white scarf on top of table",
+    "image": "https://images.unsplash.com/photo-1457545195570-67f207084966?fm=jpg&fit=max&w=1600&h=1600&q=85",
+    "file": "seed-scarves.jpg"
   }
 ]

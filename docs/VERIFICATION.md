@@ -1,5 +1,15 @@
 # FORME — verification
 
+## Additive catalogue expansion — 11 October 2026
+
+Added twenty listings to the shared Neon catalogue, bringing it to forty active products: twenty per seller and ten in each of the four categories. The additions cover furniture, tableware, desk accessories and everyday carry items. Each has a price, stock quantity, description, material/package details and an attributed photograph. The twenty new photos were visually inspected, optimised and uploaded to Cloudinary; the shared store now has forty-two product photographs.
+
+A private pre-import snapshot was compared against every existing application record after the import. All pre-existing users, products, galleries, media, cart and order records were unchanged. No records were deleted and no orders or reviews were fabricated. The public seed fixture includes the new products and preserves The Travel Pouch's three matching gallery views by product name.
+
+Live API checks passed for all twenty new product details and Cloudinary image routes, four category filters with ten products each, four search queries and four catalogue pages without missing or duplicated products. Both vendor logins returned twenty owned listings. Admin listing returned forty products, and each vendor filter returned twenty. All twenty new cloud images were delivered at a minimum 1,200-pixel long edge. The temporary verification API was stopped afterward.
+
+All twenty-eight unit/configuration tests pass (3 launcher, 19 backend and 6 frontend), including catalogue balance, bundled photo existence and the pouch-gallery regression check. The production build and whitespace checks pass. The full isolated integration suite was not repeated for this catalogue-data change. Existing computers using the shared Neon database can refresh to see the additions; no environment change or reseeding is required.
+
 ## Neon catalogue timeout repair — 11 October 2026
 
 The Windows report contained Prisma P1001 connectivity failures, P2024 pool exhaustion and P2028 transaction-start/expiry errors, including a catalogue transaction exceeding its 5-second deadline. The frontend gave up after 10 seconds. Before this repair, a read-only probe from this checkout took 5.56 seconds for the initial product request; warmed concurrent product reads took 3.79–5.32 seconds. This reproduced substantial latency, but not the friend's network outage.
